@@ -5,7 +5,16 @@
 
 # Bali DI for Scala
 
-This is a reimplementation of [Bali DI for Java](https://github.com/christian-schlichtherle/bali-di) in Scala.
+Bali DI for Scala is a pure def macro which transforms the abstract syntax tree to automate dependency injection. It
+currently supports Scala 2.13, with Scala 3 on the roadmap.
+
+This project is a reimplementation of [Bali DI for Java](https://github.com/christian-schlichtherle/bali-di) in Scala.
+As a reimplementation, it is based on the exact same concepts and aims for eventual feature parity.
+
+> Bali is also an [island](https://en.wikipedia.org/wiki/Bali) between Java and Lombok in Indonesia.
+> For disambiguation, the name of this project is "Bali DI for Scala", not just "Bali", where DI is an acronym for
+> [_dependency injection_](https://en.wikipedia.org/wiki/Dependency_injection).
+> In code however, the term "DI" is dropped because there is no ambiguity in this context.
 
 # Getting Started
 
