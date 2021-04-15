@@ -5,7 +5,7 @@
 
 # Bali DI for Scala
 
-This is a reimplementation of [Bali DI](https://github.com/christian-schlichtherle/bali-di) for Scala.
+This is a reimplementation of [Bali DI for Java](https://github.com/christian-schlichtherle/bali-di) in Scala.
 
 # Getting Started
 
