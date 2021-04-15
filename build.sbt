@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import ReleaseTransformations._
-
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/christian-schlichtherle/bali-di-scala")),
   licenses := Seq("Apache License, Version 2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
@@ -43,47 +41,26 @@ inThisBuild(Seq(
       </issueManagement>
   },
   publishArtifact := false,
-  publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    Some(
-      if (version(_ endsWith "-SNAPSHOT").value) {
-        "snapshots" at nexus + "content/repositories/snapshots"
-      } else {
-        "releases" at nexus + "service/local/staging/deploy/maven2"
-      }
-    )
-  },
-  releaseProcess := Seq[ReleaseStep](
-    checkSnapshotDependencies,
-    inquireVersions,
-    runClean,
-    releaseStepCommandAndRemaining("+test"),
-    setReleaseVersion,
-    commitReleaseVersion,
-    tagRelease,
-    releaseStepCommandAndRemaining("+publishSigned"),
-    setNextVersion,
-    commitNextVersion,
-    pushChanges,
-  ),
   scalacOptions ++= Seq("-deprecation", "-feature", "-Ymacro-annotations"),
   scalaVersion := "2.13.5",
   scmInfo := Some(ScmInfo(
     browseUrl = url("https://github.com/christian-schlichtherle/bali-di-scala"),
     connection = "scm:git:git@github.com/christian-schlichtherle/bali-di-scala.git",
-    devConnection = Some("scm:git:git@github.com/christian-schlichtherle/bali-di-scala.git")
   )),
+  versionScheme := Some("early-semver"),
 
   // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
   Test / logBuffered := false,
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD"),
 ))
 
+ThisBuild / publishTo := sonatypePublishToBundle.value
+
 lazy val root: Project = project
   .in(file("."))
   .aggregate(scala, scalaSample)
   .settings(
-    name := "Bali DI Root",
+    name := "Bali DI Root for Scala " + scalaBinaryVersion.value,
     normalizedName := "bali-root",
   )
 
@@ -106,6 +83,28 @@ lazy val scalaSample: Project = project
     libraryDependencies ++= Seq(
       Dependency.ScalaTest % Test,
     ),
-    name := s"Bali DI for Scala ${scalaBinaryVersion.value} Samples",
+    name := "Bali DI Sample for Scala " + scalaBinaryVersion.value,
     normalizedName := "bali-scala-sample",
   )
+
+import ReleaseTransformations._
+
+releaseCrossBuild := false
+
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runClean,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+//  releaseStepCommandAndRemaining("+publishSigned"),
+  releaseStepCommand("publishSigned"),
+  releaseStepCommand("sonatypeBundleRelease"),
+  setNextVersion,
+  commitNextVersion,
+  pushChanges,
+)
+
+sonatypeProfileName := "global.namespace"
