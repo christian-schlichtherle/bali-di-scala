@@ -83,7 +83,7 @@ lazy val scalaSample: Project = project
     libraryDependencies ++= Seq(
       Dependency.ScalaTest % Test,
     ),
-    name := "Bali DI Sample for Scala " + scalaBinaryVersion.value,
+    name := "Bali DI Samples for Scala " + scalaBinaryVersion.value,
     normalizedName := "bali-scala-sample",
   )
 
