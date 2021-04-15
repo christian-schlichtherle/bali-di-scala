@@ -87,9 +87,9 @@ lazy val scalaSample: Project = project
     normalizedName := "bali-scala-sample",
   )
 
-import ReleaseTransformations._
-
 releaseCrossBuild := false
+
+import ReleaseTransformations._
 
 releaseProcess := Seq[ReleaseStep](
   checkSnapshotDependencies,
