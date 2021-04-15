@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import sbtrelease.ReleaseStateTransformations._
+import ReleaseTransformations._
 
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/christian-schlichtherle/bali-di-scala")),
