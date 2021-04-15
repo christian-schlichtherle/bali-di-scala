@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import sbtrelease.ReleaseStateTransformations._
+
 inThisBuild(Seq(
   homepage := Some(url("https://github.com/christian-schlichtherle/bali-di-scala")),
   licenses := Seq("Apache License, Version 2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
@@ -50,6 +53,19 @@ inThisBuild(Seq(
       }
     )
   },
+  releaseProcess := Seq[ReleaseStep](
+    checkSnapshotDependencies,
+    inquireVersions,
+    runClean,
+    releaseStepCommandAndRemaining("+test"),
+    setReleaseVersion,
+    commitReleaseVersion,
+    tagRelease,
+    releaseStepCommandAndRemaining("+publishSigned"),
+    setNextVersion,
+    commitNextVersion,
+    pushChanges,
+  ),
   scalacOptions ++= Seq("-deprecation", "-feature", "-Ymacro-annotations"),
   scalaVersion := "2.13.5",
   scmInfo := Some(ScmInfo(
