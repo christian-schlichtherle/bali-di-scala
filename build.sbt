@@ -61,7 +61,7 @@ lazy val root: Project = project
   .aggregate(scala, scalaSample)
   .settings(
     name := "Bali DI Root for Scala " + scalaBinaryVersion.value,
-    normalizedName := "bali-root",
+    normalizedName := "bali-scala-root",
   )
 
 lazy val scala: Project = project
