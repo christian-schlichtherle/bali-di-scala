@@ -13,5 +13,5 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-addDependencyTreePlugin
 addSbtPlugin("com.github.sbt" % "sbt-release" % "1.0.15")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
