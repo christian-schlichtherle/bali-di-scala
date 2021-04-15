@@ -73,6 +73,7 @@ inThisBuild(Seq(
     connection = "scm:git:git@github.com/christian-schlichtherle/bali-di-scala.git",
     devConnection = Some("scm:git:git@github.com/christian-schlichtherle/bali-di-scala.git")
   )),
+  versionScheme := Some("early-semver"),
 
   // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
   Test / logBuffered := false,
