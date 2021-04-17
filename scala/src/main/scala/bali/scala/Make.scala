@@ -25,50 +25,54 @@ private final class Make(val c: blackbox.Context) {
 
   def apply[A <: AnyRef : c.WeakTypeTag]: Tree = {
     val targetType = weakTypeOf[A]
-    val targetTypeSymbol = targetType.typeSymbol
+
+    def targetTypeSymbol = targetType.typeSymbol
 
     def binding(symbol: MethodSymbol) = {
-      lazy val name: TermName = symbol.name
-      lazy val dependency: Tree = q"$name"
-      lazy val stable: Boolean = symbol.isStable
-      lazy val returnType: Type = symbol.returnType.asSeenFrom(targetType, symbol.owner)
-      lazy val functionType: Type = c.typecheck(tq"$targetType => $returnType", mode = c.TYPEmode).tpe
+      val name = symbol.name
+      val dependency = q"$name"
+      val returnType = symbol.returnType.asSeenFrom(targetType, symbol.owner)
+      lazy val functionType = c.typecheck(tq"$targetType => $returnType", mode = c.TYPEmode).tpe
 
-      def typeCheckDependencyAs(dependencyType: Type): Option[Tree] = {
-        c.typecheck(dependency, pt = dependencyType, silent = true) match {
+      def isStable = symbol.isStable
+
+      def typeCheckDependency(as: Type) = {
+        c.typecheck(dependency, pt = as, silent = true) match {
           case EmptyTree => None
           case typeCheckedDependency => Some(typeCheckedDependency)
         }
       }
 
-      def returnValueBinding(dependency: Tree): Tree = {
-        if (stable) {
-          q"lazy val $name: $returnType = $dependency"
+      def returnValueBinding(dependency: Tree) = {
+        if (isStable) {
+          q"override lazy val $name: $returnType = $dependency"
         } else {
-          q"def $name: $returnType = $dependency"
+          q"override def $name: $returnType = $dependency"
         }
       }
 
-      def functionBinding(dependency: Tree): Tree = {
+      def functionBinding(dependency: Tree) = {
         val fun = c.untypecheck(dependency)
-        if (stable) {
-          q"lazy val $name: $returnType = $fun(this)"
+        if (isStable) {
+          q"override lazy val $name: $returnType = $fun(this)"
         } else {
-          q"def $name: $returnType = $fun(this)"
+          q"override def $name: $returnType = $fun(this)"
         }
       }
 
-      {
-        typeCheckDependencyAs(returnType).map(returnValueBinding)
-      }.orElse {
-        typeCheckDependencyAs(functionType).map(functionBinding)
-      }.getOrElse {
-        typeCheckDependencyAs(WildcardType).map { dependency =>
-          abort(s"Dependency `$dependency` must be assignable to type `$returnType` or `$functionType`, but has type `${dependency.tpe}`:")
-        }.getOrElse {
-          abort(s"No dependency available to bind method `$name: $returnType` as seen from $targetTypeSymbol:")
-        }
+      def wrongType(dependency: Tree) = {
+        val dependencySymbol = dependency.symbol
+        abort(s"Dependency $dependencySymbol in ${dependencySymbol.owner} must be assignable to type $returnType or ($functionType), but has type ${dependency.tpe}:")
       }
+
+      def notFound = {
+        abort(s"No dependency found to bind the $symbol in ${symbol.owner} of type $returnType as seen from $targetTypeSymbol:")
+      }
+
+      typeCheckDependency(returnType).map(returnValueBinding)
+        .orElse(typeCheckDependency(functionType).map(functionBinding))
+        .orElse(typeCheckDependency(WildcardType).map(wrongType))
+        .getOrElse(notFound)
     }
 
     val body = targetType
