@@ -79,10 +79,10 @@ private final class Make(val c: blackbox.Context) {
       .map(binding)
     if (body.nonEmpty) {
       q"new $targetType { ..$body }"
-    } else /*if (targetTypeSymbol.isAbstract)*/ {
+    } else if (targetTypeSymbol.isAbstract) {
       q"new $targetType {}"
-//    } else {
-//      q"new $targetType"
+    } else {
+      q"new $targetType"
     }
   }
 }
