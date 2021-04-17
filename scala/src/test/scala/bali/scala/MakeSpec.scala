@@ -20,9 +20,9 @@ import org.scalatest.matchers.should.Matchers._
 
 import java.util.function.Supplier
 
-class MakeMacroSpec extends AnyFeatureSpec {
+class MakeSpec extends AnyFeatureSpec {
 
-  import MakeMacroSpec._
+  import MakeSpec._
 
   Feature("Dependencies can be auto-wired using the `make` macro") {
 
@@ -100,7 +100,7 @@ class MakeMacroSpec extends AnyFeatureSpec {
   }
 }
 
-private object MakeMacroSpec {
+private object MakeSpec {
 
   trait A[T] {
 

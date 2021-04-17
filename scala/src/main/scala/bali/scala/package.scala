@@ -19,5 +19,5 @@ import _root_.scala.language.experimental.macros
 
 package object scala {
 
-  def make[A <: AnyRef]: A = macro MakeMacro.make[A]
+  def make[A <: AnyRef]: A = macro Make.apply[A]
 }

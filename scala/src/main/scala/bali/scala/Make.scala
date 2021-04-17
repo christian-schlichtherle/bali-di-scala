@@ -15,13 +15,13 @@
  */
 package bali.scala
 
-import scala.language.experimental.macros
 import scala.reflect.macros.blackbox
 
-private object MakeMacro {
+private final class Make(val c: blackbox.Context) {
 
-  def make[A <: AnyRef : c.WeakTypeTag](c: blackbox.Context): c.Tree = {
-    import c.universe._
+  import c.universe._
+
+  def apply[A <: AnyRef : c.WeakTypeTag]: c.Tree = {
 
     val targetType = weakTypeOf[A]
     val targetTypeSymbol = targetType.typeSymbol
@@ -119,7 +119,7 @@ private object MakeMacro {
 
     val body = methodInfos.map(new MethodBinding(_).bind)
     // Splicing an empty body would remove the entire body, which would result in an error message because you can't
-    // "new" an abstract type:
+    // simply "new" an abstract type:
     if (body.nonEmpty) {
       q"new $targetType { ..$body }"
     } else {
