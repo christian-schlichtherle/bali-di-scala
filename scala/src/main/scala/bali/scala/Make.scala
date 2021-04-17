@@ -21,75 +21,28 @@ private final class Make(val c: blackbox.Context) {
 
   import c.universe._
 
-  def apply[A <: AnyRef : c.WeakTypeTag]: c.Tree = {
+  private def abort(msg: String) = c.abort(c.enclosingPosition, msg)
 
+  def apply[A <: AnyRef : c.WeakTypeTag]: Tree = {
     val targetType = weakTypeOf[A]
     val targetTypeSymbol = targetType.typeSymbol
 
-    final class MethodInfo(symbol: MethodSymbol) {
-
-      lazy val isStable: Boolean = symbol.isStable
-
+    def binding(symbol: MethodSymbol) = {
       lazy val name: TermName = symbol.name
-
+      lazy val dependency: Tree = q"$name"
+      lazy val stable: Boolean = symbol.isStable
       lazy val returnType: Type = symbol.returnType.asSeenFrom(targetType, symbol.owner)
-
       lazy val functionType: Type = c.typecheck(tq"$targetType => $returnType", mode = c.TYPEmode).tpe
 
-      override lazy val toString: String = s"method `$name: $returnType` as seen from $targetTypeSymbol"
-    }
-
-    abstract class BaseBinding(info: MethodInfo) {
-
-      import info._
-
-      def bind: Tree = {
-        {
-          //noinspection ConvertibleToMethodValue
-          typeCheckDependencyAs(returnType).map(returnValueBinding(_))
-        }.orElse {
-          //noinspection ConvertibleToMethodValue
-          typeCheckDependencyAs(functionType).map(functionBinding(_))
-        }.getOrElse {
-          typeCheckDependencyAs(WildcardType).map { dependency =>
-            abort(s"Dependency `$dependency` must be assignable to type `$returnType` or `$functionType`, but has type `${dependency.tpe}`:")
-          }.getOrElse {
-            abort(s"No dependency available to bind $info:")
-          }
-        }
-      }
-
-      private def typeCheckDependencyAs(dependencyType: Type): Option[c.Tree] = {
+      def typeCheckDependencyAs(dependencyType: Type): Option[Tree] = {
         c.typecheck(dependency, pt = dependencyType, silent = true) match {
-          case `EmptyTree` => None
+          case EmptyTree => None
           case typeCheckedDependency => Some(typeCheckedDependency)
         }
       }
 
-      protected def returnValueBinding(dependency: Tree): Tree
-
-      protected def functionBinding(dependency: Tree): Tree
-
-      private def abort(msg: String) = c.abort(c.enclosingPosition, msg)
-
-      private lazy val dependency: Tree = q"$name"
-    }
-
-    final class SynapseBinding(info: MethodInfo) extends BaseBinding(info) {
-
-      import info._
-
-      def returnValueBinding(dependency: Tree): Tree = q"bind(_.$name).to($dependency)"
-
-      def functionBinding(dependency: Tree): Tree = returnValueBinding(dependency)
-    }
-
-    final class MethodBinding(info: MethodInfo) extends BaseBinding(info) {
-
-      import info._
-
       def returnValueBinding(dependency: Tree): Tree = {
-        if (isStable) {
+        if (stable) {
           q"lazy val $name: $returnType = $dependency"
         } else {
           q"def $name: $returnType = $dependency"
@@ -98,32 +51,38 @@ private final class Make(val c: blackbox.Context) {
 
       def functionBinding(dependency: Tree): Tree = {
         val fun = c.untypecheck(dependency)
-        if (isStable) {
+        if (stable) {
           q"lazy val $name: $returnType = $fun(this)"
         } else {
           q"def $name: $returnType = $fun(this)"
         }
       }
-    }
 
-    val methodInfos: Iterable[MethodInfo] = {
-
-      def ifAbstractMethod: PartialFunction[Any, MethodSymbol] = {
-        case member: Symbol if member.isAbstract && member.isMethod => member.asMethod
+      {
+        typeCheckDependencyAs(returnType).map(returnValueBinding)
+      }.orElse {
+        typeCheckDependencyAs(functionType).map(functionBinding)
+      }.getOrElse {
+        typeCheckDependencyAs(WildcardType).map { dependency =>
+          abort(s"Dependency `$dependency` must be assignable to type `$returnType` or `$functionType`, but has type `${dependency.tpe}`:")
+        }.getOrElse {
+          abort(s"No dependency available to bind method `$name: $returnType` as seen from $targetTypeSymbol:")
+        }
       }
-
-      def isParameterless(method: MethodSymbol) = method.paramLists.flatten.isEmpty
-
-      targetType.members.collect(ifAbstractMethod).filter(isParameterless).map(new MethodInfo(_))
     }
 
-    val body = methodInfos.map(new MethodBinding(_).bind)
-    // Splicing an empty body would remove the entire body, which would result in an error message because you can't
-    // simply "new" an abstract type:
+    val body = targetType
+      .members
+      .collect { case member: MethodSymbol => member }
+      .filter(_.isAbstract)
+      .filter(_.paramLists.flatten.isEmpty)
+      .map(binding)
     if (body.nonEmpty) {
       q"new $targetType { ..$body }"
-    } else {
+    } else /*if (targetTypeSymbol.isAbstract)*/ {
       q"new $targetType {}"
+//    } else {
+//      q"new $targetType"
     }
   }
 }

@@ -20,7 +20,7 @@ import bali.scala.make
 
 trait Clock {
 
-  final def now: Date = new Date
+  final def now: Date = make[Date]
 }
 
 trait ClockModule {
