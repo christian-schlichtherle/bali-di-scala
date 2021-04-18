@@ -31,13 +31,13 @@ class WeatherStationModuleSpec extends AnyWordSpec {
     "work" in {
       april.now should not be theSameInstanceAs(april.now)
       new Date should be <= april.now
-      val temperature = april.temperature
-      temperature should not be theSameInstanceAs(april.temperature)
-      temperature.value shouldBe temperature.value
-      temperature.value should be >= 5D
-      temperature.value should be < 25D
-      temperature.unit shouldBe temperature.unit
-      temperature.unit shouldBe Celsius
+      val temp = april.temp
+      temp should not be theSameInstanceAs(april.temp)
+      temp.value shouldBe temp.value
+      temp.value should be >= 5D
+      temp.value should be < 25D
+      temp.unit shouldBe temp.unit
+      temp.unit shouldBe Celsius
     }
   }
 }

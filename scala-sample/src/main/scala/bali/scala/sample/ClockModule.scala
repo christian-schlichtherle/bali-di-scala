@@ -15,15 +15,19 @@
  */
 package bali.scala.sample
 
+import bali.Module
+
 import java.util.Date
-import bali.scala.make
 
 trait Clock {
 
-  final def now: Date = make[Date]
+  def now: Date
 }
 
+@Module
 trait ClockModule {
 
-  final lazy val clock: Clock = make[Clock]
+  val clock: Clock
+
+  protected def now: Date
 }

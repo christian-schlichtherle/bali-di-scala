@@ -22,7 +22,7 @@ import org.scalatest.wordspec.AnyWordSpec
 class GreetingModuleSpec extends AnyWordSpec {
 
   "A GreetingModule" should {
-    val module = make[GreetingModule]
+    val module: GreetingModule = make[RealGreetingModule]
     import module._
 
     "Make a greeting" in {

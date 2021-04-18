@@ -19,15 +19,14 @@ import bali.scala.make
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 
-class CounterFactoryModuleSpec extends AnyWordSpec {
+class CounterModuleSpec extends AnyWordSpec {
 
   "A CounterFactoryModule" should {
-    val module = make[CounterFactoryModule]
+    val module = make[CounterModule]
     import module._
 
     "work" in {
-      counterFactory should be theSameInstanceAs counterFactory
-      counterFactory.counter should not be theSameInstanceAs(counterFactory.counter)
+      counter should not be theSameInstanceAs(counter)
     }
   }
 }

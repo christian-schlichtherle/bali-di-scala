@@ -15,7 +15,7 @@
  */
 package bali.scala.sample
 
-import bali.scala.make
+import bali.Module
 
 trait Counter {
 
@@ -27,17 +27,8 @@ trait Counter {
   }
 }
 
-trait HasCounter {
+@Module
+trait CounterModule {
 
   def counter: Counter
-}
-
-trait CounterFactory extends HasCounter {
-
-  final override def counter: Counter = make[Counter]
-}
-
-trait CounterFactoryModule {
-
-  final lazy val counterFactory: CounterFactory = make[CounterFactory]
 }

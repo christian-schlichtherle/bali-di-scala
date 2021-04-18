@@ -15,16 +15,19 @@
  */
 package bali.scala.sample
 
-import bali.scala.make
+import bali.Module
 
-trait Metric extends HasCounter {
+trait Metric {
 
-  final lazy val counter: Counter = make[Counter]
+  val counter: Counter
 
   final def incrementCounter: Counter = counter.increment
 }
 
+@Module
 trait MetricModule {
 
-  final lazy val metric: Metric = make[Metric]
+  protected val counter: Counter
+
+  val metric: Metric
 }

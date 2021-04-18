@@ -15,11 +15,31 @@
  */
 package bali.scala.sample
 
-import bali.scala.make
+import bali.{Lookup, Module}
+
+trait Formatter {
+
+  def format(args: Any*): String
+}
 
 trait Greeting {
 
   def message(entity: String): String
+}
+
+trait GreetingModule {
+
+  val formatter: Formatter
+
+  val greeting: Greeting
+}
+
+private trait RealFormatter extends Formatter {
+
+  @Lookup("Format")
+  def format: String
+
+  final def format(args: Any*): String = format.format(args: _*)
 }
 
 private trait RealGreeting extends Greeting {
@@ -29,28 +49,12 @@ private trait RealGreeting extends Greeting {
   final def message(entity: String): String = formatter.format(entity)
 }
 
-trait Formatter {
+@Module
+private trait RealGreetingModule extends GreetingModule {
 
-  def format(args: Any*): String
-}
+  override val formatter: RealFormatter
 
-private trait RealFormatter extends Formatter {
+  override val greeting: RealGreeting
 
-  def theFormat: String
-
-  final def format(args: Any*): String = theFormat.format(args: _*)
-}
-
-trait GreetingModule {
-
-  import GreetingModule._
-
-  final lazy val greeting: Greeting = make[RealGreeting]
-
-  final lazy val formatter: Formatter = make[RealFormatter]
-}
-
-object GreetingModule {
-
-  val theFormat = "Hello %s!"
+  final val Format = "Hello %s!"
 }

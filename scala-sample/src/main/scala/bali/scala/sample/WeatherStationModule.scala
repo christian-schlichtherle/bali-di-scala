@@ -15,18 +15,21 @@
  */
 package bali.scala.sample
 
-import bali.scala.make
 import bali.scala.sample.Temperature.Celsius
+import bali.{Lookup, Module}
 
+import java.util.Date
 import java.util.concurrent.ThreadLocalRandom
 
 trait Temperature[U <: Temperature.Unit] {
 
+  @Lookup("tempValue")
   val value: Double
 
+  @Lookup("tempUnit")
   val unit: U
 
-  override def toString: String = s"$value˚ $unit"
+  final override def toString: String = s"$value˚ $unit"
 }
 
 object Temperature {
@@ -50,16 +53,19 @@ object Temperature {
 
 trait WeatherStation[U <: Temperature.Unit] extends Clock {
 
-  def temperature: Temperature[U]
+  def temp: Temperature[U]
 }
 
+@Module
 trait WeatherStationModule {
 
-  import Temperature.{Celsius => unit}
+  val april: WeatherStation[Celsius]
 
-  final lazy val april: WeatherStation[Celsius] = make[WeatherStation[Celsius]]
+  protected def now: Date
 
-  final def temperature: Temperature[Celsius] = make[Temperature[Celsius]]
+  protected def temp: Temperature[Celsius]
 
-  final def value: Double = ThreadLocalRandom.current.nextDouble(5D, 25D)
+  protected final def tempValue: Double = ThreadLocalRandom.current.nextDouble(5D, 25D)
+
+  protected final val tempUnit = Temperature.Celsius
 }
