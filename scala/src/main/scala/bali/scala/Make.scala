@@ -68,10 +68,11 @@ private final class Make(val c: blackbox.Context) {
         abort(s"No dependency found to bind $symbol in ${symbol.owner} of type $returnType as seen from $targetTypeSymbol:")
       }
 
-      typecheckDependency(returnType).map(bindDependency)
+      Some(makeDependency)
+        .filter(_ => isModule && lookupAnnotation.isEmpty)
+        .orElse(typecheckDependency(returnType).map(bindDependency))
         .orElse(typecheckDependency(functionType).map(bindDependencyFunction))
         .orElse(typecheckDependency(WildcardType).map(abortWrongType))
-        .orElse(Some(makeDependency).filter(_ => isModule && lookupAnnotation.isEmpty))
         .getOrElse(abortNotFound)
     }
 
