@@ -16,6 +16,7 @@
 package bali.scala.sample
 
 import bali.scala.make
+import bali.scala.sample.Temperature.Celsius
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -25,18 +26,18 @@ class WeatherStationModuleSpec extends AnyWordSpec {
 
   "An WeatherStationModule" should {
     val module = make[WeatherStationModule]
+    import module._
 
     "work" in {
-      val station = module.station
-      station.now should not be theSameInstanceAs(station.now)
-      new Date should be <= station.now
-      val temperature = station.temperature
-      temperature should not be theSameInstanceAs(station.temperature)
+      april.now should not be theSameInstanceAs(april.now)
+      new Date should be <= april.now
+      val temperature = april.temperature
+      temperature should not be theSameInstanceAs(april.temperature)
       temperature.value shouldBe temperature.value
       temperature.value should be >= 5D
       temperature.value should be < 25D
       temperature.unit shouldBe temperature.unit
-      temperature.unit shouldBe "˚ Celsius"
+      temperature.unit shouldBe Celsius
     }
   }
 }

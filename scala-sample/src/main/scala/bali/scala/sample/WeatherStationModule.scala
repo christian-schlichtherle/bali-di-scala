@@ -16,36 +16,50 @@
 package bali.scala.sample
 
 import bali.scala.make
+import bali.scala.sample.Temperature.Celsius
 
 import java.util.concurrent.ThreadLocalRandom
 
-trait WeatherStation extends Clock {
+trait Temperature[U <: Temperature.Unit] {
 
-  def temperature: Temperature
+  val value: Double
 
-  trait Temperature {
+  val unit: U
 
-    val value: Double
+  override def toString: String = s"$value˚ $unit"
+}
 
-    val unit: String
+object Temperature {
+
+  sealed trait Unit
+
+  type Celsius = Celsius.type
+
+  object Celsius extends Unit {
+
+    override def toString: String = "Celsius"
+  }
+
+  type Fahrenheit = Fahrenheit.type
+
+  object Fahrenheit extends Unit {
+
+    override def toString: String = "Fahrenheit"
   }
 }
 
-private trait AprilWeatherStation extends WeatherStation {
+trait WeatherStation[U <: Temperature.Unit] extends Clock {
 
-  import AprilWeatherStation._
-
-  def temperature: Temperature = make[Temperature]
-}
-
-private object AprilWeatherStation {
-
-  def value: Double = ThreadLocalRandom.current.nextDouble(5D, 25D)
-
-  val unit: String = "˚ Celsius"
+  def temperature: Temperature[U]
 }
 
 trait WeatherStationModule {
 
-  lazy val station: WeatherStation = make[AprilWeatherStation]
+  import Temperature.{Celsius => unit}
+
+  final lazy val april: WeatherStation[Celsius] = make[WeatherStation[Celsius]]
+
+  final def temperature: Temperature[Celsius] = make[Temperature[Celsius]]
+
+  final def value: Double = ThreadLocalRandom.current.nextDouble(5D, 25D)
 }
