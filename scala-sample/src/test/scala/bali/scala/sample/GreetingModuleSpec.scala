@@ -25,13 +25,13 @@ class GreetingModuleSpec extends AnyWordSpec {
     val module: GreetingModule = make[RealGreetingModule]
     import module._
 
-    "Make a greeting" in {
+    "make a greeting" in {
       greeting should be theSameInstanceAs greeting
       greeting shouldBe a[RealGreeting]
       greeting.message("world") shouldBe "Hello world!"
     }
 
-    "Make a formatter" in {
+    "make a formatter" in {
       formatter should be theSameInstanceAs formatter
       formatter shouldBe a[RealFormatter]
       formatter.format("world") shouldBe "Hello world!"
