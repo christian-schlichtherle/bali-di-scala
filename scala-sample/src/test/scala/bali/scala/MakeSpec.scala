@@ -58,6 +58,7 @@ class MakeSpec extends AnyFeatureSpec {
       abc.foo shouldBe foo
       abc.bar shouldBe bar
       abc.baz shouldBe baz(abc)
+      abc.baz shouldBe 3
     }
 
     Scenario("ABC[String]") {
@@ -74,6 +75,7 @@ class MakeSpec extends AnyFeatureSpec {
       abc.bar shouldNot be theSameInstanceAs abc.bar
       abc.baz shouldBe baz(abc)
       abc.baz shouldNot be theSameInstanceAs abc.baz
+      abc.baz shouldBe "foobar"
     }
 
     Scenario("ABC1[String]") {

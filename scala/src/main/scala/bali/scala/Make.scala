@@ -16,6 +16,7 @@
 package bali.scala
 
 import scala.reflect.macros.blackbox
+import scala.util.chaining._
 
 private final class Make(val c: blackbox.Context) {
 
@@ -26,53 +27,59 @@ private final class Make(val c: blackbox.Context) {
     lazy val targetTypeSymbol = targetType.typeSymbol
     lazy val isModule = targetTypeSymbol.annotation(ModuleAnnotationName).isDefined
 
-    def bind(symbol: MethodSymbol) = {
-      val lookupAnnotation = symbol.annotation(LookupAnnotationName)
-      val symbolName = symbol.name
+    def bind(methodSymbol: MethodSymbol) = {
+      val methodName = methodSymbol.name
+      val methodSignature = methodSymbol.infoIn(targetType)
+      val lookupAnnotation = methodSymbol.annotation(LookupAnnotationName)
       val lookupName = lookupAnnotation
         .flatMap(_.get("field", "method", "value").map(TermName.apply))
-        .getOrElse(symbolName)
-      val dependencyTree = q"$lookupName"
-      val returnType = symbol.returnType.asSeenFrom(targetType, symbol.owner)
+        .getOrElse(methodName)
+      val returnType = methodSignature.finalResultType
+      lazy val tparamsDecl = methodSignature.typeParams.map(internal.typeDef)
+      lazy val tparams = methodSignature.typeParams.map(_.name)
+      lazy val paramssDecl = methodSignature.paramLists.map(_.map(internal.valDef))
+      lazy val paramss = methodSignature.paramLists.map(_.map(_.name))
+
+      def rhs(ref: Tree) = {
+        paramss match {
+          case List(List()) if methodSymbol.isJava => q"$ref"
+          case _ => q"$ref(...$paramss)"
+        }
+      }
+
+      lazy val lookupRhs = rhs(q"$lookupName")
+
       lazy val functionType = c.typecheck(tq"$targetType => $returnType", mode = c.TYPEmode).tpe
-      lazy val isStableSymbol = symbol.isStable
 
-      def typecheckDependency(as: Type) = {
-        c.typecheck(dependencyTree, pt = as, silent = true) match {
-          case EmptyTree => None
-          case typeCheckedDependency => Some(typeCheckedDependency)
-        }
-      }
+      def freshName = c.freshName(methodName)
 
-      def bindDependency(dependency: Tree) = {
-        if (isStableSymbol) {
-          q"override lazy val $symbolName: $returnType = $dependency"
+      def bind(rhs: Tree) = {
+        if (methodSymbol.isStable) {
+          q"override lazy val $methodName: $returnType = $rhs"
         } else {
-          q"override def $symbolName: $returnType = $dependency"
+          q"override def $methodName[..$tparamsDecl](...$paramssDecl): $returnType = $rhs"
         }
       }
 
-      def bindDependencyFunction(dependency: Tree) = {
-        val fun = c.untypecheck(dependency)
-        bindDependency(q"$fun(this)")
-      }
+      def makeDependency = bind(q"_root_.bali.scala.make[$returnType]")
 
-      def makeDependency = bindDependency(q"_root_.bali.scala.make[$returnType]")
+      def bindFunction(rhs: Tree) = bind(q"${c.untypecheck(rhs)}(this)")
 
-      def abortWrongType(dependency: Tree) = {
-        val dependencySymbol = dependency.symbol
-        abort(s"Dependency $dependencySymbol in ${dependencySymbol.owner} must be assignable to type $returnType or ($functionType), but has type ${dependency.tpe}:")
+      def abortWrongType(rhs: Tree) = {
+        abort(s"Expression ($rhs) must be assignable to type $returnType or ($functionType), but has type ${rhs.tpe}:")
       }
 
       def abortNotFound = {
-        abort(s"No dependency found to bind $symbol in ${symbol.owner} of type $returnType as seen from $targetTypeSymbol:")
+        val inherited = if (targetTypeSymbol != methodSymbol.owner) s" (inherited from ${methodSymbol.owner})" else ""
+        abort(s"No dependency found of type $returnType or ($functionType) to bind $methodSymbol$inherited.")
       }
 
-      Some(makeDependency)
-        .filter(_ => isModule && lookupAnnotation.isEmpty)
-        .orElse(typecheckDependency(returnType).map(bindDependency))
-        .orElse(typecheckDependency(functionType).map(bindDependencyFunction))
-        .orElse(typecheckDependency(WildcardType).map(abortWrongType))
+      Option
+        .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
+//        .orElse(typecheck(lookupRhs, pt = returnType).map(bind))
+        .orElse(typecheck(lookupRhs, pt = functionType).map(bindFunction))
+        .orElse(typecheck(q"def $freshName[..$tparamsDecl](...$paramssDecl): $returnType = $lookupRhs", mode = c.TYPEmode)/*.tap(debug)*/.map { case q"def $_[..$_](...$_): $_ = $ref[..$_](...$_)" => ref }.map(ref => bind(rhs(ref)/*.tap(debug)*/)))
+        .orElse(typecheck(lookupRhs).map(abortWrongType))
         .getOrElse(abortNotFound)
     }
 
@@ -80,7 +87,6 @@ private final class Make(val c: blackbox.Context) {
       .members
       .collect { case member: MethodSymbol => member }
       .filter(_.isAbstract)
-      .filter(_.paramLists.flatten.isEmpty)
       .map(bind)
     if (body.nonEmpty) {
       q"new $targetType { ..$body }"
@@ -88,6 +94,15 @@ private final class Make(val c: blackbox.Context) {
       q"new $targetType {}"
     } else {
       q"new $targetType"
+    }
+  }
+
+  private def debug(any: Any): Unit = c.echo(c.enclosingPosition, show(any))
+
+  private def typecheck(tree: Tree, mode: c.TypecheckMode = c.TERMmode, pt: Type = WildcardType) = {
+    c.typecheck(tree, mode = mode, pt = pt, silent = true) match {
+      case EmptyTree => None
+      case typecheckedTree => Some(typecheckedTree)
     }
   }
 
