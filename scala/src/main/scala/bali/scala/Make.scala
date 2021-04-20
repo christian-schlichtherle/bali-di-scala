@@ -16,78 +16,92 @@
 package bali.scala
 
 import scala.reflect.macros.blackbox
-import scala.util.chaining._
 
 private final class Make(val c: blackbox.Context) {
 
   import c.universe._
 
+  private def abort(msg: String) = c.abort(c.enclosingPosition, msg)
+
   def apply[A <: AnyRef : c.WeakTypeTag]: Tree = {
-    val targetType = weakTypeOf[A]
-    lazy val targetTypeSymbol = targetType.typeSymbol
-    lazy val isModule = targetTypeSymbol.annotation(ModuleAnnotationName).isDefined
 
-    def bind(methodSymbol: MethodSymbol) = {
-      val methodName = methodSymbol.name
-      val methodType = methodSymbol.infoIn(targetType)
-      lazy val methodOwner = methodSymbol.owner
+    lazy val body = {
+      targetType.members.collect { case member: MethodSymbol => member }.filter(_.isAbstract).map(implement)
+    }
 
-      val lookupAnnotation = methodSymbol.annotation(LookupAnnotationName)
-      val lookupName = lookupAnnotation
-        .flatMap(_.get("field", "method", "value").map(TermName.apply))
-        .getOrElse(methodName)
+    def implement(methodSymbol: MethodSymbol) = {
 
-      val returnType = methodType.finalResultType
-      lazy val tparamsDecl = methodType.typeParams.map(internal.typeDef)
-      lazy val paramssDecl = methodType.paramLists.map(_.map(internal.valDef))
-      lazy val paramss = methodType.paramLists.map(_.map(_.name))
+      def abortNotFound = abort(s"No dependency found to implement $methodSignature.")
 
-      def rhs(ref: Tree) = {
-        paramss match {
-          case List(List()) if methodSymbol.isJava => q"$ref"
-          case _ => q"$ref(...$paramss)"
-        }
+      def abortWrongType(ref: Tree) = {
+        abort(s"${ref.symbol} with type ${ref.tpe} in ${ref.symbol.owner} is not applicable to implement $methodSignature.")
       }
 
-      lazy val lookupRhs = rhs(q"$lookupName")
+      def callDependency: PartialFunction[Tree, Tree] = {
+        case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => implementAs(rhs(ref))
+      }
 
       def freshName = c.freshName(methodName)
 
-      def implement(rhs: Tree) = {
+      def implementAs(rhs: Tree) = {
         if (methodSymbol.isStable) {
           q"override lazy val $methodName: $returnType = $rhs"
         } else {
-          q"override def $methodName[..$tparamsDecl](...$paramssDecl): $returnType = $rhs"
+          q"override def $methodName[..$typeParamsDecl](...$paramDeclLists): $returnType = $rhs"
         }
       }
 
-      def makeDependency = implement(q"_root_.bali.scala.make[$returnType]")
+      lazy val lookupAnnotation = methodSymbol.annotation(LookupAnnotationName)
 
-      def methodSignature = {
+      def lookupDefTree = q"def $freshName[..$typeParamsDecl](...$paramDeclLists): $returnType = ${rhs(lookupNameTree)}"
+
+      def lookupName = lookupAnnotation
+        .flatMap(_.get("field", "method", "value").map(TermName.apply))
+        .getOrElse(methodName)
+
+      lazy val lookupNameTree = q"$lookupName"
+
+      def makeDependency = implementAs(q"_root_.bali.scala.make[$returnType]")
+
+      lazy val methodName = methodSymbol.name
+
+      lazy val methodOwner = methodSymbol.owner
+
+      lazy val methodSignature = {
         val inherited = if (targetTypeSymbol != methodOwner) s" inherited from $methodOwner" else ""
         s"$methodSymbol with type $methodType$inherited in $targetTypeSymbol"
       }
 
-      def abortWrongType(rhs: Tree) = {
-        abort(s"${rhs.symbol} with type ${rhs.tpe} in ${rhs.symbol.owner} is not applicable to implement $methodSignature.")
+      lazy val methodType = methodSymbol.infoIn(targetType)
+
+      lazy val paramNameLists = methodType.paramLists.map(_.map(_.name))
+
+      lazy val paramDeclLists = methodType.paramLists.map(_.map(internal.valDef))
+
+      lazy val returnType = methodType.finalResultType
+
+      def rhs(ref: Tree) = {
+        paramNameLists match {
+          case List(List()) if methodSymbol.isJava => q"$ref"
+          case _ => q"$ref(...$paramNameLists)"
+        }
       }
 
-      def abortNotFound = {
-        abort(s"No dependency found to implement $methodSignature.")
-      }
+      lazy val typeParamsDecl = methodType.typeParams.map(internal.typeDef)
 
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
-        .orElse(typecheck(q"def $freshName[..$tparamsDecl](...$paramssDecl): $returnType = $lookupRhs").map { case q"def $_[..$_](...$_): $_ = $ref[..$_](...$_)" => implement(rhs(ref)) })
-        .orElse(typecheck(q"$lookupName").map(abortWrongType))
+        .orElse(typecheck(lookupDefTree).map(callDependency))
+        .orElse(typecheck(lookupNameTree).map(abortWrongType))
         .getOrElse(abortNotFound)
     }
 
-    val body = targetType
-      .members
-      .collect { case member: MethodSymbol => member }
-      .filter(_.isAbstract)
-      .map(bind)
+    lazy val isModule = targetTypeSymbol.annotation(ModuleAnnotationName).isDefined
+
+    lazy val targetType = weakTypeOf[A]
+
+    lazy val targetTypeSymbol = targetType.typeSymbol
+
     if (body.nonEmpty) {
       q"new $targetType { ..$body }"
     } else if (targetTypeSymbol.isAbstract) {
@@ -103,8 +117,6 @@ private final class Make(val c: blackbox.Context) {
       case typecheckedTree => Some(typecheckedTree)
     }
   }
-
-  private def abort(msg: String) = c.abort(c.enclosingPosition, msg)
 
   private implicit class AnnotationOps(a: Annotation) {
 
