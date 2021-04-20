@@ -52,13 +52,12 @@ class MakeSpec extends AnyFeatureSpec {
       val foo = 1
       val bar = 2
 
-      def baz(abc: ABC[Int]) = abc.foo + abc.bar
+      def baz = 3
 
       val abc = make[ABC[Int]]
       abc.foo shouldBe foo
       abc.bar shouldBe bar
-      abc.baz shouldBe baz(abc)
-      abc.baz shouldBe 3
+      abc.baz shouldBe baz
     }
 
     Scenario("ABC[String]") {
@@ -66,31 +65,31 @@ class MakeSpec extends AnyFeatureSpec {
 
       def bar = new String("bar")
 
-      def baz(abc: ABC[String]) = abc.foo + abc.bar
+      def baz = new String("baz")
 
       val abc = make[ABC[String]]
       abc.foo shouldBe foo
       abc.foo shouldNot be theSameInstanceAs abc.foo
       abc.bar shouldBe bar
       abc.bar shouldNot be theSameInstanceAs abc.bar
-      abc.baz shouldBe baz(abc)
+      abc.baz shouldBe baz
       abc.baz shouldNot be theSameInstanceAs abc.baz
-      abc.baz shouldBe "foobar"
     }
 
-    Scenario("ABC1[String]") {
+    Scenario("StableABC[String]") {
       def foo = new String("foo")
 
       def bar = new String("bar")
 
-      val baz = (abc: ABC1[String]) => abc.foo + abc.bar
-      val abc1 = make[ABC1[String]]
-      abc1.foo shouldBe foo
-      abc1.foo should be theSameInstanceAs abc1.foo
-      abc1.bar shouldBe bar
-      abc1.bar should be theSameInstanceAs abc1.bar
-      abc1.baz shouldBe baz(abc1)
-      abc1.baz should be theSameInstanceAs abc1.baz
+      def baz = new String("baz")
+
+      val abc = make[StableABC[String]]
+      abc.foo shouldBe foo
+      abc.foo should be theSameInstanceAs abc.foo
+      abc.bar shouldBe bar
+      abc.bar should be theSameInstanceAs abc.bar
+      abc.baz shouldBe baz
+      abc.baz should be theSameInstanceAs abc.baz
     }
 
     Scenario("Supplier[String]") {
@@ -126,7 +125,7 @@ private object MakeSpec {
 
   trait ABC[T] extends A[T] with B[T] with C[T]
 
-  trait ABC1[T] extends ABC[T] {
+  trait StableABC[T] extends ABC[T] {
 
     override val foo: T
     override val bar: T

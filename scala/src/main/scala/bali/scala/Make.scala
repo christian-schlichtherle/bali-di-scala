@@ -29,16 +29,18 @@ private final class Make(val c: blackbox.Context) {
 
     def bind(methodSymbol: MethodSymbol) = {
       val methodName = methodSymbol.name
-      val methodSignature = methodSymbol.infoIn(targetType)
+      val methodType = methodSymbol.infoIn(targetType)
+      lazy val methodOwner = methodSymbol.owner
+
       val lookupAnnotation = methodSymbol.annotation(LookupAnnotationName)
       val lookupName = lookupAnnotation
         .flatMap(_.get("field", "method", "value").map(TermName.apply))
         .getOrElse(methodName)
-      val returnType = methodSignature.finalResultType
-      lazy val tparamsDecl = methodSignature.typeParams.map(internal.typeDef)
-      lazy val tparams = methodSignature.typeParams.map(_.name)
-      lazy val paramssDecl = methodSignature.paramLists.map(_.map(internal.valDef))
-      lazy val paramss = methodSignature.paramLists.map(_.map(_.name))
+
+      val returnType = methodType.finalResultType
+      lazy val tparamsDecl = methodType.typeParams.map(internal.typeDef)
+      lazy val paramssDecl = methodType.paramLists.map(_.map(internal.valDef))
+      lazy val paramss = methodType.paramLists.map(_.map(_.name))
 
       def rhs(ref: Tree) = {
         paramss match {
@@ -49,11 +51,9 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val lookupRhs = rhs(q"$lookupName")
 
-      lazy val functionType = c.typecheck(tq"$targetType => $returnType", mode = c.TYPEmode).tpe
-
       def freshName = c.freshName(methodName)
 
-      def bind(rhs: Tree) = {
+      def implement(rhs: Tree) = {
         if (methodSymbol.isStable) {
           q"override lazy val $methodName: $returnType = $rhs"
         } else {
@@ -61,25 +61,25 @@ private final class Make(val c: blackbox.Context) {
         }
       }
 
-      def makeDependency = bind(q"_root_.bali.scala.make[$returnType]")
+      def makeDependency = implement(q"_root_.bali.scala.make[$returnType]")
 
-      def bindFunction(rhs: Tree) = bind(q"${c.untypecheck(rhs)}(this)")
+      def methodSignature = {
+        val inherited = if (targetTypeSymbol != methodOwner) s" inherited from $methodOwner" else ""
+        s"$methodSymbol with type $methodType$inherited in $targetTypeSymbol"
+      }
 
       def abortWrongType(rhs: Tree) = {
-        abort(s"Expression ($rhs) must be assignable to type $returnType or ($functionType), but has type ${rhs.tpe}:")
+        abort(s"${rhs.symbol} with type ${rhs.tpe} in ${rhs.symbol.owner} is not applicable to implement $methodSignature.")
       }
 
       def abortNotFound = {
-        val inherited = if (targetTypeSymbol != methodSymbol.owner) s" (inherited from ${methodSymbol.owner})" else ""
-        abort(s"No dependency found of type $returnType or ($functionType) to bind $methodSymbol$inherited.")
+        abort(s"No dependency found to implement $methodSignature.")
       }
 
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
-//        .orElse(typecheck(lookupRhs, pt = returnType).map(bind))
-        .orElse(typecheck(lookupRhs, pt = functionType).map(bindFunction))
-        .orElse(typecheck(q"def $freshName[..$tparamsDecl](...$paramssDecl): $returnType = $lookupRhs", mode = c.TYPEmode)/*.tap(debug)*/.map { case q"def $_[..$_](...$_): $_ = $ref[..$_](...$_)" => ref }.map(ref => bind(rhs(ref)/*.tap(debug)*/)))
-        .orElse(typecheck(lookupRhs).map(abortWrongType))
+        .orElse(typecheck(q"def $freshName[..$tparamsDecl](...$paramssDecl): $returnType = $lookupRhs").map { case q"def $_[..$_](...$_): $_ = $ref[..$_](...$_)" => implement(rhs(ref)) })
+        .orElse(typecheck(q"$lookupName").map(abortWrongType))
         .getOrElse(abortNotFound)
     }
 
@@ -97,9 +97,7 @@ private final class Make(val c: blackbox.Context) {
     }
   }
 
-  private def debug(any: Any): Unit = c.echo(c.enclosingPosition, show(any))
-
-  private def typecheck(tree: Tree, mode: c.TypecheckMode = c.TERMmode, pt: Type = WildcardType) = {
+  private def typecheck(tree: Tree, mode: c.TypecheckMode = c.TYPEmode, pt: Type = WildcardType) = {
     c.typecheck(tree, mode = mode, pt = pt, silent = true) match {
       case EmptyTree => None
       case typecheckedTree => Some(typecheckedTree)
