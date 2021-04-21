@@ -23,7 +23,7 @@ private final class Make(val c: blackbox.Context) {
 
   private def abort(msg: String) = c.abort(c.enclosingPosition, msg)
 
-  def apply[A <: AnyRef : c.WeakTypeTag]: Tree = {
+  def apply[A >: Null <: AnyRef : c.WeakTypeTag]: Tree = {
 
     lazy val body = {
       targetType.members.collect { case member: MethodSymbol => member }.filter(_.isAbstract).map(implement)

@@ -19,7 +19,7 @@ import _root_.scala.language.experimental.macros
 
 package object scala {
 
-  def make[A <: AnyRef]: A = macro Make.apply[A]
+  def make[A >: Null <: AnyRef]: A = macro Make.apply[A]
 
   private[scala] val LookupAnnotationName = classOf[Lookup].getName
   private[scala] val ModuleAnnotationName = classOf[Module].getName
