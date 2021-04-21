@@ -50,9 +50,10 @@ private trait RealGreeting extends Greeting {
 @Module
 private trait RealGreetingModule extends GreetingModule {
 
-  protected val formatter: RealFormatter
+  // TODO: If this method is abstract, then the make[...] call would be automatically added but it wouldn't have access to private fields or imported values anymore?!
+  final lazy val formatter: RealFormatter = bali.scala.make[RealFormatter]
 
   override val greeting: RealGreeting
 
-  protected final val Format = "Hello %s!"
+  private val Format = "Hello %s!"
 }

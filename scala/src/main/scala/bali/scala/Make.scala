@@ -59,7 +59,7 @@ private final class Make(val c: blackbox.Context) {
         .flatMap(_.get("field", "method", "value").map(TermName.apply))
         .getOrElse(methodName)
 
-      lazy val lookupNameTree = q"$lookupName"
+      def lookupNameTree = q"$lookupName"
 
       def makeDependency = implementAs(q"_root_.bali.scala.make[$returnType]")
 
@@ -91,8 +91,8 @@ private final class Make(val c: blackbox.Context) {
 
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
-        .orElse(typecheck(lookupDefTree).map(callDependency))
-        .orElse(typecheck(lookupNameTree).map(abortWrongType))
+        .orElse(typecheck(lookupDefTree, mode = c.TERMmode).map(callDependency))
+        .orElse(typecheck(lookupNameTree, mode = c.TYPEmode).map(abortWrongType))
         .getOrElse(abortNotFound)
     }
 
@@ -111,7 +111,7 @@ private final class Make(val c: blackbox.Context) {
     }
   }
 
-  private def typecheck(tree: Tree, mode: c.TypecheckMode = c.TYPEmode, pt: Type = WildcardType) = {
+  private def typecheck(tree: Tree, mode: c.TypecheckMode, pt: Type = WildcardType) = {
     c.typecheck(tree, mode = mode, pt = pt, silent = true) match {
       case EmptyTree => None
       case typecheckedTree => Some(typecheckedTree)
