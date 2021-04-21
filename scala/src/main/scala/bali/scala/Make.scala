@@ -31,17 +31,27 @@ private final class Make(val c: blackbox.Context) {
 
     def implement(methodSymbol: MethodSymbol) = {
 
-      def abortNotFound = abort(s"No dependency found to implement $methodSignature.")
+      lazy val abortNotFound = abort(s"No dependency found to implement $methodSignature.")
 
       def abortWrongType(ref: Tree) = {
         abort(s"${ref.symbol} with type ${ref.tpe} in ${ref.symbol.owner} is not applicable to implement $methodSignature.")
       }
 
-      def callDependency: PartialFunction[Tree, Tree] = {
-        case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => implementAs(rhs(ref))
+      lazy val anyDependency = testTree("value")
+
+      def bindDependency(ref: Tree) = implementAs(rhs(ref))
+
+      lazy val dependency: Option[Tree] = {
+        Iterator(paramDependency, methodDependency, fieldDependency)
+          .flatten
+          .nextOption()
+          .orElse(typecheckAndExtract(methodName))
       }
 
-      def freshName = c.freshName(methodName)
+      lazy val fieldDependency = testTreeWithFilter("field") {
+        case s: MethodSymbol => s.isVal || s.isVar
+        case _ => false
+      }
 
       def implementAs(rhs: Tree) = {
         if (methodSymbol.isStable) {
@@ -53,17 +63,17 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val lookupAnnotation = methodSymbol.annotation(LookupAnnotationName)
 
-      def lookupDefTree = q"def $freshName[..$typeParamsDecl](...$paramDeclLists): $returnType = ${rhs(lookupNameTree)}"
+      lazy val lookupAnnotationMap = {
+        lookupAnnotation.map(_.toMap).getOrElse(Map.empty).collect {
+          case key -> (value: String) if value.nonEmpty => key -> TermName(value)
+        }
+      }
 
-      def lookupName = lookupAnnotation
-        .flatMap(_.get("field", "method", "value").map(TermName.apply))
-        .getOrElse(methodName)
+      lazy val makeDependency = implementAs(q"_root_.bali.scala.make[$returnType]")
 
-      def lookupNameTree = q"$lookupName"
+      lazy val methodDependency = testTreeWithFilter("method")(_.isMethod)
 
-      def makeDependency = implementAs(q"_root_.bali.scala.make[$returnType]")
-
-      lazy val methodName = methodSymbol.name
+      lazy val methodName: TermName = methodSymbol.name
 
       lazy val methodOwner = methodSymbol.owner
 
@@ -74,9 +84,11 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val methodType = methodSymbol.infoIn(targetType)
 
-      lazy val paramNameLists = methodType.paramLists.map(_.map(_.name))
-
       lazy val paramDeclLists = methodType.paramLists.map(_.map(internal.valDef))
+
+      lazy val paramDependency = testTreeWithFilter("param")(_.isParameter)
+
+      lazy val paramNameLists = methodType.paramLists.map(_.map(_.name))
 
       lazy val returnType = methodType.finalResultType
 
@@ -87,12 +99,26 @@ private final class Make(val c: blackbox.Context) {
         }
       }
 
+      def testTree(key: String) = lookupAnnotationMap.get(key).flatMap(typecheckAndExtract)
+
+      def testTreeWithFilter(key: String)(test: Symbol => Boolean) = {
+        testTree(key).orElse(anyDependency).filter(ref => test(ref.symbol))
+      }
+
+      def typecheckAndExtract(ref: TermName) = {
+        val freshName = c.freshName(methodName)
+        val tree = rhs(q"$ref")
+        typecheck(q"def $freshName[..$typeParamsDecl](...$paramDeclLists): $returnType = $tree").map {
+          case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => ref
+        }
+      }
+
       lazy val typeParamsDecl = methodType.typeParams.map(internal.typeDef)
 
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
-        .orElse(typecheck(lookupDefTree).map(callDependency))
-        .orElse(typecheck(lookupNameTree).map(abortWrongType))
+        .orElse(dependency.map(bindDependency))
+        .orElse(typecheck(q"$methodName").map(abortWrongType))
         .getOrElse(abortNotFound)
     }
 
@@ -120,10 +146,10 @@ private final class Make(val c: blackbox.Context) {
 
   private implicit class AnnotationOps(a: Annotation) {
 
-    def get(keys: String*): Option[String] = {
-      a.tree.children.tail.collectFirst {
-        case NamedArg(Ident(TermName(key)), Literal(Constant(value))) if keys.contains(key) => value.toString
-      }
+    def toMap: Map[String, Any] = {
+      a.tree.children.tail.collect {
+        case NamedArg(Ident(TermName(key)), Literal(Constant(value))) => key -> value
+      }.toMap
     }
   }
 
