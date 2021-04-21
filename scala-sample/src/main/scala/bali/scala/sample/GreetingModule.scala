@@ -29,22 +29,20 @@ trait Greeting {
 
 trait GreetingModule {
 
-  val formatter: Formatter
-
   val greeting: Greeting
 }
 
 private trait RealFormatter extends Formatter {
 
   @Lookup("Format")
-  def format: String
+  protected def format: String
 
   final def format(args: Any*): String = format.format(args: _*)
 }
 
 private trait RealGreeting extends Greeting {
 
-  def formatter: Formatter
+  protected def formatter: Formatter
 
   final def message(entity: String): String = formatter.format(entity)
 }
@@ -52,9 +50,9 @@ private trait RealGreeting extends Greeting {
 @Module
 private trait RealGreetingModule extends GreetingModule {
 
-  override val formatter: RealFormatter
+  protected val formatter: RealFormatter
 
   override val greeting: RealGreeting
 
-  final val Format = "Hello %s!"
+  protected final val Format = "Hello %s!"
 }
