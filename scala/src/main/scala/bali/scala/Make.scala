@@ -91,8 +91,8 @@ private final class Make(val c: blackbox.Context) {
 
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
-        .orElse(typecheck(lookupDefTree, mode = c.TERMmode).map(callDependency))
-        .orElse(typecheck(lookupNameTree, mode = c.TYPEmode).map(abortWrongType))
+        .orElse(typecheck(lookupDefTree).map(callDependency))
+        .orElse(typecheck(lookupNameTree).map(abortWrongType))
         .getOrElse(abortNotFound)
     }
 
@@ -111,8 +111,8 @@ private final class Make(val c: blackbox.Context) {
     }
   }
 
-  private def typecheck(tree: Tree, mode: c.TypecheckMode, pt: Type = WildcardType) = {
-    c.typecheck(tree, mode = mode, pt = pt, silent = true) match {
+  private def typecheck(tree: Tree) = {
+    c.typecheck(tree, silent = true) match {
       case EmptyTree => None
       case typecheckedTree => Some(typecheckedTree)
     }
