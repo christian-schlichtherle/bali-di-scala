@@ -41,7 +41,7 @@ private final class Make(val c: blackbox.Context) {
 
       def bindDependency(ref: Tree) = implementAs(rhs(ref))
 
-      lazy val dependency: Option[Tree] = {
+      lazy val dependency = {
         Iterator(paramDependency, methodDependency, fieldDependency)
           .flatten
           .nextOption()
