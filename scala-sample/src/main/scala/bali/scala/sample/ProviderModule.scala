@@ -4,16 +4,24 @@ import bali.{Lookup, Module}
 
 trait Provider[A] {
 
-  @Lookup(field = "field", method = "method", param = "param", value = "value")
+  @Lookup(field = "field", method = "method", param = "param")
   def get: A
+}
+
+trait StableProvider[A] extends Provider[A] {
+
+  @Lookup(field = "field"/*, method = "method"*/, param = "param")
+  val get: A
 }
 
 @Module
 trait ProviderModule {
 
-  private[sample] var field: Null = null
+  protected var field: Null = null
 
-  private[sample] def method: Nothing = ???
+  protected def method: Nothing = ???
 
-  def provider[A >: Null](param: A): Provider[A]
+  def provider[A](param: => A): Provider[A]
+
+  def stableProvider[A](param: => A): StableProvider[A]
 }

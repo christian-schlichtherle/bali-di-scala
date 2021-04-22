@@ -21,6 +21,8 @@ private final class Make(val c: blackbox.Context) {
 
   import c.universe._
 
+  type SymbolTest = Symbol => Boolean
+
   private def abort(msg: String) = c.abort(c.enclosingPosition, msg)
 
   def apply[A >: Null <: AnyRef : c.WeakTypeTag]: Tree = {
@@ -37,27 +39,31 @@ private final class Make(val c: blackbox.Context) {
         abort(s"${ref.symbol} with type ${ref.tpe} in ${ref.symbol.owner} is not applicable to implement $methodSignature.")
       }
 
-      lazy val anyDependency = testTree("value")
+      def bindDependency(ref: Tree) = implementAs(rightHandSide(ref))
 
-      def bindDependency(ref: Tree) = implementAs(rhs(ref))
+      lazy val fieldAlias = lookupAnnotationMap.get("field")
 
-      lazy val dependency = {
-        Iterator(paramDependency, methodDependency, fieldDependency)
-          .flatten
-          .nextOption()
-          .orElse(typecheckAndExtract(methodName))
-      }
+      lazy val fieldAliasAndConstraint = fieldAlias.map(_ -> fieldConstraint)
 
-      lazy val fieldDependency = testTreeWithFilter("field") {
+      lazy val fieldConstraint: SymbolTest = {
         case s: MethodSymbol => s.isVal || s.isVar
         case _ => false
       }
 
       def implementAs(rhs: Tree) = {
         if (methodSymbol.isStable) {
-          q"override lazy val $methodName: $returnType = $rhs"
+          val rhsIsEagerVal = rhs.symbol match {
+            //            case s: TermSymbol if /*!s.isLazy && */s.isStable => true
+            //            case s: Symbol if s.isParameter => true
+            case _ => false
+          }
+          if (rhsIsEagerVal) {
+            q"final override val $methodName: $returnType = $rhs"
+          } else {
+            q"final override lazy val $methodName: $returnType = $rhs"
+          }
         } else {
-          q"override def $methodName[..$typeParamsDecl](...$paramDeclLists): $returnType = $rhs"
+          q"final override def $methodName[..$typeParamsDecl](...$paramDeclLists): $returnType = $rhs"
         }
       }
 
@@ -71,7 +77,11 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val makeDependency = implementAs(q"_root_.bali.scala.make[$returnType]")
 
-      lazy val methodDependency = testTreeWithFilter("method")(_.isMethod)
+      lazy val methodAlias = lookupAnnotationMap.get("method")
+
+      lazy val methodAliasAndConstraint = methodAlias.map(_ -> methodConstraint)
+
+      lazy val methodConstraint: SymbolTest = _.isMethod
 
       lazy val methodName: TermName = methodSymbol.name
 
@@ -84,41 +94,66 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val methodType = methodSymbol.infoIn(targetType)
 
-      lazy val paramDeclLists = methodType.paramLists.map(_.map(internal.valDef))
+      lazy val paramAlias = lookupAnnotationMap.get("param")
 
-      lazy val paramDependency = testTreeWithFilter("param")(_.isParameter)
+      lazy val paramAliasAndConstraint = paramAlias.map(_ -> paramConstraint)
+
+      lazy val paramConstraint: SymbolTest = _.isParameter
+
+      lazy val paramDeclLists = methodType.paramLists.map(_.map(internal.valDef))
 
       lazy val paramNameLists = methodType.paramLists.map(_.map(_.name))
 
       lazy val returnType = methodType.finalResultType
 
-      def rhs(ref: Tree) = {
+      def rightHandSide(ref: Tree) = {
         paramNameLists match {
           case List(List()) if methodSymbol.isJava => q"$ref"
           case _ => q"$ref(...$paramNameLists)"
         }
       }
 
-      def testTree(key: String) = lookupAnnotationMap.get(key).flatMap(typecheckAndExtract)
-
-      def testTreeWithFilter(key: String)(test: Symbol => Boolean) = {
-        testTree(key).orElse(anyDependency).filter(ref => test(ref.symbol))
-      }
-
       def typecheckAndExtract(ref: TermName) = {
         val freshName = c.freshName(methodName)
-        val tree = rhs(q"$ref")
-        typecheck(q"def $freshName[..$typeParamsDecl](...$paramDeclLists): $returnType = $tree").map {
+        val rhs = rightHandSide(q"$ref")
+        typecheck {
+          q"def $freshName[..$typeParamsDecl](...$paramDeclLists): $returnType = $rhs"
+        }.map {
           case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => ref
         }
       }
 
+      lazy val matchDependency = {
+        Iterator(
+          paramAliasAndConstraint,
+          methodAliasAndConstraint,
+          fieldAliasAndConstraint,
+          Some(
+            valueAliasOrMethodName ->
+              Seq(paramAliasAndConstraint, methodAliasAndConstraint, fieldAliasAndConstraint)
+                .flatten
+                .map(_._2)
+                .reduceOption((t1, t2) => (s: Symbol) => t1(s) || t2(s))
+                .map(t => (s: Symbol) => !t(s))
+                .getOrElse((_: Symbol) => true)
+          ),
+        )
+          .flatten
+          .flatMap {
+            case alias -> constraint => typecheckAndExtract(alias).filter(ref => constraint(ref.symbol))
+          }
+          .nextOption()
+      }
+
       lazy val typeParamsDecl = methodType.typeParams.map(internal.typeDef)
+
+      lazy val valueAlias = lookupAnnotationMap.get("value")
+
+      lazy val valueAliasOrMethodName = valueAlias.getOrElse(methodName)
 
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
-        .orElse(dependency.map(bindDependency))
-        .orElse(typecheck(q"$methodName").map(abortWrongType))
+        .orElse(matchDependency.map(bindDependency))
         .getOrElse(abortNotFound)
     }
 
@@ -138,7 +173,7 @@ private final class Make(val c: blackbox.Context) {
   }
 
   private def typecheck(tree: Tree) = {
-    c.typecheck(tree, silent = true) match {
+    c.typecheck(tree, silent = true, withImplicitViewsDisabled = true) match {
       case EmptyTree => None
       case typecheckedTree => Some(typecheckedTree)
     }
