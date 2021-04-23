@@ -16,8 +16,8 @@ class ProviderModuleSpec extends AnyWordSpec {
     }
 
     "execute a side effect at most once" in new Fixture { self =>
-//      import self.{incrementAndGet => get}
-      def get: Int = incrementAndGet
+      import self.{incrementAndGet => method}
+//      def method: Int = incrementAndGet
       val counter = make[StableProvider[Int]]
       count shouldBe 0
       counter.get shouldBe 1

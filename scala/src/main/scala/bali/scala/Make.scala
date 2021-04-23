@@ -50,20 +50,19 @@ private final class Make(val c: blackbox.Context) {
         case _ => false
       }
 
-      def implementAs(rhs: Tree) = {
+      def implementAs(rightHandSide: Tree) = {
         if (methodSymbol.isStable) {
-          val rhsIsEagerVal = rhs.symbol match {
-            //            case s: TermSymbol if /*!s.isLazy && */s.isStable => true
-            //            case s: Symbol if s.isParameter => true
+          val eagerVal = rightHandSide.symbol match {
+            case s: TermSymbol if !s.isLazy && s.isStable => true
             case _ => false
           }
-          if (rhsIsEagerVal) {
-            q"final override val $methodName: $returnType = $rhs"
+          if (eagerVal) {
+            q"final override val $methodName: $returnType = $rightHandSide"
           } else {
-            q"final override lazy val $methodName: $returnType = $rhs"
+            q"final override lazy val $methodName: $returnType = $rightHandSide"
           }
         } else {
-          q"final override def $methodName[..$typeParamsDecl](...$paramDeclLists): $returnType = $rhs"
+          q"final override def $methodName[..$typeParamsDecl](...$paramDeclLists): $returnType = $rightHandSide"
         }
       }
 

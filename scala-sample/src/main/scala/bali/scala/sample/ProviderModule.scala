@@ -10,7 +10,7 @@ trait Provider[A] {
 
 trait StableProvider[A] extends Provider[A] {
 
-  @Lookup(field = "field"/*, method = "method"*/, param = "param")
+  @Lookup(field = "field", method = "method", param = "param")
   val get: A
 }
 
