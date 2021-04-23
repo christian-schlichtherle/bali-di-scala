@@ -107,8 +107,10 @@ private final class Make(val c: blackbox.Context) {
       def typecheckAndExtract(ref: TermName) = {
         val freshName = c.freshName(methodName)
         val rhs = rightHandSide(q"$ref")
+        val paramListsWithoutDefaultsDecl =
+          methodType.paramLists.map(_.map(s => q"${s.name.toTermName}: ${s.typeSignature}"))
         typecheck {
-          q"def $freshName[..$typeParamsDecl](...$paramListsDecl): $returnType = $rhs"
+          q"def $freshName[..$typeParamsDecl](...$paramListsWithoutDefaultsDecl): $returnType = $rhs"
         }.flatMap {
           case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => Some(ref)
           case _ => None
