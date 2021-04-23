@@ -21,7 +21,7 @@ As a reimplementation, it is based on the exact same concepts and aims for event
 If you use SBT, you need to add the following dependency to your project:
 
 ```sbt
-libraryDependencies += "global.namespace.bali" %% "bali-scala" % "0.2.0" % Provided
+libraryDependencies += "global.namespace.bali" %% "bali-scala" % "0.4.2" % Provided
 ```
 
 Note that this is a compile-time-only dependency - there is no runtime dependency of your code on Bali DI for Scala!
