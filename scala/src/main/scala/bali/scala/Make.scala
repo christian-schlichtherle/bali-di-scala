@@ -54,7 +54,7 @@ private final class Make(val c: blackbox.Context) {
         if (methodSymbol.isStable) {
           q"final override lazy val $methodName: $returnType = $rightHandSide"
         } else {
-          q"final override def $methodName[..$typeParamsDecl](...$paramDeclLists): $returnType = $rightHandSide"
+          q"final override def $methodName[..$typeParamsDecl](...$paramListsDecl): $returnType = $rightHandSide"
         }
       }
 
@@ -91,16 +91,16 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val paramConstraint: SymbolTest = _.isParameter
 
-      lazy val paramDeclLists = methodType.paramLists.map(_.map(internal.valDef))
+      lazy val paramLists = methodType.paramLists.map(_.map(_.name))
 
-      lazy val paramNameLists = methodType.paramLists.map(_.map(_.name))
+      lazy val paramListsDecl = methodType.paramLists.map(_.map(internal.valDef))
 
       lazy val returnType = methodType.finalResultType
 
       def rightHandSide(ref: Tree) = {
-        paramNameLists match {
+        paramLists match {
           case List(List()) if methodSymbol.isJava => q"$ref"
-          case _ => q"$ref(...$paramNameLists)"
+          case _ => q"$ref(...$paramLists)"
         }
       }
 
@@ -108,9 +108,10 @@ private final class Make(val c: blackbox.Context) {
         val freshName = c.freshName(methodName)
         val rhs = rightHandSide(q"$ref")
         typecheck {
-          q"def $freshName[..$typeParamsDecl](...$paramDeclLists): $returnType = $rhs"
-        }.map {
-          case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => ref
+          q"def $freshName[..$typeParamsDecl](...$paramListsDecl): $returnType = $rhs"
+        }.flatMap {
+          case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => Some(ref)
+          case _ => None
         }
       }
 
@@ -142,6 +143,8 @@ private final class Make(val c: blackbox.Context) {
           case alias -> constraint => typecheck(q"$alias").filter(ref => constraint(ref.symbol))
         }.map(abortWrongType).lastOption
       }
+
+      lazy val typeParams = methodType.typeParams.map(_.name)
 
       lazy val typeParamsDecl = methodType.typeParams.map(internal.typeDef)
 
