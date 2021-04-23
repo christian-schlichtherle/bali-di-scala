@@ -123,7 +123,13 @@ private final class Make(val c: blackbox.Context) {
       }
 
       lazy val matchDependency = {
-        Iterator(
+        matchPlan.iterator.flatMap {
+          case alias -> constraint => typecheckAndExtract(alias).filter(ref => constraint(ref.symbol))
+        }.nextOption()
+      }
+
+      lazy val matchPlan = {
+        Seq(
           paramAliasAndConstraint,
           methodAliasAndConstraint,
           fieldAliasAndConstraint,
@@ -136,12 +142,13 @@ private final class Make(val c: blackbox.Context) {
                 .map(t => (s: Symbol) => !t(s))
                 .getOrElse((_: Symbol) => true)
           ),
-        )
-          .flatten
-          .flatMap {
-            case alias -> constraint => typecheckAndExtract(alias).filter(ref => constraint(ref.symbol))
-          }
-          .nextOption()
+        ).flatten
+      }
+
+      def reportWrongType = {
+        matchPlan.flatMap {
+          case alias -> constraint => typecheck(q"$alias").filter(ref => constraint(ref.symbol))
+        }.map(abortWrongType).lastOption
       }
 
       lazy val typeParamsDecl = methodType.typeParams.map(internal.typeDef)
@@ -149,10 +156,10 @@ private final class Make(val c: blackbox.Context) {
       lazy val valueAlias = lookupAnnotationMap.get("value")
 
       lazy val valueAliasOrMethodName = valueAlias.getOrElse(methodName)
-
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
         .orElse(matchDependency.map(bindDependency))
+        .orElse(reportWrongType)
         .getOrElse(abortNotFound)
     }
 
