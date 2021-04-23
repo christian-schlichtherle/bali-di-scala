@@ -95,6 +95,10 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val paramListsDecl = methodType.paramLists.map(_.map(internal.valDef))
 
+      lazy val paramListsWithoutDefaultsDecl = {
+        methodType.paramLists.map(_.map(s => q"${s.name.toTermName}: ${s.typeSignature}"))
+      }
+
       lazy val returnType = methodType.finalResultType
 
       def rightHandSide(ref: Tree) = {
@@ -107,8 +111,6 @@ private final class Make(val c: blackbox.Context) {
       def typecheckAndExtract(ref: TermName) = {
         val freshName = c.freshName(methodName)
         val rhs = rightHandSide(q"$ref")
-        val paramListsWithoutDefaultsDecl =
-          methodType.paramLists.map(_.map(s => q"${s.name.toTermName}: ${s.typeSignature}"))
         typecheck {
           q"def $freshName[..$typeParamsDecl](...$paramListsWithoutDefaultsDecl): $returnType = $rhs"
         }.flatMap {
