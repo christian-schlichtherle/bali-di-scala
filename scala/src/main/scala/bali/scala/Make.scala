@@ -33,13 +33,22 @@ private final class Make(val c: blackbox.Context) {
 
     def implement(methodSymbol: MethodSymbol) = {
 
-      lazy val abortNotFound = abort(s"No dependency found to implement $methodSignature.")
+      lazy val abortNotFound = abort(s"No dependency found to bind $methodSignature.")
 
       def abortWrongType(ref: Tree) = {
-        abort(s"${ref.symbol} with type ${ref.tpe} in ${ref.symbol.owner} is not applicable to implement $methodSignature.")
+        val withType = if (ref.tpe.paramLists.flatten.isEmpty) ": " else ""
+        abort(s"${ref.symbol}$withType${ref.tpe} in ${ref.symbol.owner} is not applicable to bind $methodSignature.")
       }
 
-      def bindDependency(ref: Tree) = implementAs(rightHandSide(ref))
+      def bindAs(rightHandSide: Tree) = {
+        if (methodSymbol.isVal) {
+          q"final override lazy val $methodName: $returnType = $rightHandSide"
+        } else {
+          q"final override def $methodName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rightHandSide"
+        }
+      }
+
+      def bindDependency(ref: Tree) = bindAs(rightHandSide(ref))
 
       lazy val fieldAlias = lookupAnnotationMap.get("field")
 
@@ -50,14 +59,6 @@ private final class Make(val c: blackbox.Context) {
         case _ => false
       }
 
-      def implementAs(rightHandSide: Tree) = {
-        if (methodSymbol.isStable) {
-          q"final override lazy val $methodName: $returnType = $rightHandSide"
-        } else {
-          q"final override def $methodName[..$typeParamsDecl](...$paramListsDecl): $returnType = $rightHandSide"
-        }
-      }
-
       lazy val lookupAnnotation = methodSymbol.annotation(LookupAnnotationName)
 
       lazy val lookupAnnotationMap = {
@@ -66,7 +67,7 @@ private final class Make(val c: blackbox.Context) {
         }
       }
 
-      lazy val makeDependency = implementAs(q"_root_.bali.scala.make[$returnType]")
+      lazy val makeDependency = bindAs(q"_root_.bali.scala.make[$returnType]")
 
       lazy val methodAlias = lookupAnnotationMap.get("method")
 
@@ -79,8 +80,9 @@ private final class Make(val c: blackbox.Context) {
       lazy val methodOwner = methodSymbol.owner
 
       lazy val methodSignature = {
+        val withType = if (paramLists.flatten.isEmpty) ": " else ""
         val inherited = if (targetTypeSymbol != methodOwner) s" inherited from $methodOwner" else ""
-        s"$methodSymbol with type $methodType$inherited in $targetTypeSymbol"
+        s"$methodSymbol$withType$methodType$inherited in $targetTypeSymbol"
       }
 
       lazy val methodType = methodSymbol.infoIn(targetType)
@@ -91,20 +93,18 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val paramConstraint: SymbolTest = _.isParameter
 
-      lazy val paramLists = methodType.paramLists.map(_.map(_.name))
+      lazy val paramLists = methodType.paramLists
 
-      lazy val paramListsDecl = methodType.paramLists.map(_.map(internal.valDef))
+      lazy val paramLists4Lhs = paramLists.map(_.map(s => q"${s.name.toTermName}: ${s.info}"))
 
-      lazy val paramListsWithoutDefaultsDecl = {
-        methodType.paramLists.map(_.map(s => q"${s.name.toTermName}: ${s.typeSignature}"))
-      }
+      lazy val paramLists4Rhs = paramLists.map(_.map(_.name.toTermName))
 
       lazy val returnType = methodType.finalResultType
 
       def rightHandSide(ref: Tree) = {
-        paramLists match {
+        paramLists4Rhs match {
           case List(List()) if methodSymbol.isJava => q"$ref"
-          case _ => q"$ref(...$paramLists)"
+          case _ => q"$ref(...$paramLists4Rhs)"
         }
       }
 
@@ -112,7 +112,7 @@ private final class Make(val c: blackbox.Context) {
         val freshName = c.freshName(methodName)
         val rhs = rightHandSide(q"$ref")
         typecheck {
-          q"def $freshName[..$typeParamsDecl](...$paramListsWithoutDefaultsDecl): $returnType = $rhs"
+          q"def $freshName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rhs"
         }.flatMap {
           case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => Some(ref)
           case _ => None
@@ -148,9 +148,7 @@ private final class Make(val c: blackbox.Context) {
         }.map(abortWrongType).lastOption
       }
 
-      lazy val typeParams = methodType.typeParams.map(_.name)
-
-      lazy val typeParamsDecl = methodType.typeParams.map(internal.typeDef)
+      lazy val typeParams4Lhs = methodType.typeParams.map(internal.typeDef)
 
       lazy val valueAlias = lookupAnnotationMap.get("value")
 

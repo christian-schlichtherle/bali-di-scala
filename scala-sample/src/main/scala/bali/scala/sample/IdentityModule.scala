@@ -1,16 +1,17 @@
 package bali.scala.sample
 
-import bali.Module
+import bali.{Lookup, Module}
 
-trait Apply {
+trait Fun[A, B] {
 
-  def apply[A](a: A): A
+  @Lookup("fun")
+  def apply(a: A): B
 }
 
 @Module
 trait IdentityModule {
 
-  protected def apply[A](a: A): A = a
+  protected def fun[A](a: A): A = a
 
-  def identity: Apply
+  def identity[A]: Fun[A, A]
 }
