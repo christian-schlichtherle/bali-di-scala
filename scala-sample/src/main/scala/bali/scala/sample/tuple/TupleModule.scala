@@ -3,7 +3,10 @@ package bali.scala.sample.tuple
 import bali.scala.make
 import bali.{Lookup, Module}
 
-trait Tuple2[@specialized(Int, Long, Double, Char, Boolean/*, AnyRef*/) +T1, @specialized(Int, Long, Double, Char, Boolean/*, AnyRef*/) +T2] {
+trait Tuple2[
+  @specialized(Int, Long, Double, Char, Boolean/*, AnyRef*/) +T1,
+  @specialized(Int, Long, Double, Char, Boolean/*, AnyRef*/) +T2
+] {
 
   val _1: T1
 
