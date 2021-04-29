@@ -24,18 +24,18 @@ import java.util.Date
 
 class WeatherStationModuleSpec extends AnyWordSpec {
 
-  "An WeatherStationModule" should {
+  "A WeatherStationModule" should {
     val module = make[WeatherStationModule]
     import module._
 
-    "work" in {
+    "report typical April weather" in {
       april.now should not be theSameInstanceAs(april.now)
       new Date should be <= april.now
       val temp = april.temp
       temp should not be theSameInstanceAs(april.temp)
       temp.value shouldBe temp.value
-      temp.value should be >= 5D
-      temp.value should be < 25D
+      temp.value should be >= 5f
+      temp.value should be < 25f
       temp.unit shouldBe temp.unit
       temp.unit shouldBe Celsius
     }
