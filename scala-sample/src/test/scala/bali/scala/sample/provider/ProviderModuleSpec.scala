@@ -1,9 +1,9 @@
-package bali.scala.sample
+package bali.scala.sample.provider
 
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers._
 import bali.scala.make
-import ProviderModuleSpec._
+import bali.scala.sample.provider.ProviderModuleSpec._
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 
 class ProviderModuleSpec extends AnyWordSpec {
 

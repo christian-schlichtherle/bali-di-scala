@@ -13,21 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package bali.scala.sample
+package bali.scala.sample.counter
 
-import bali.Module
+import bali.scala.make
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 
-trait Metric {
+class CounterModuleSpec extends AnyWordSpec {
 
-  val counter: Counter
+  "A CounterFactoryModule" should {
+    val module = make[CounterModule]
+    import module._
 
-  final def incrementCounter: Counter = counter.increment
-}
-
-@Module
-trait MetricModule {
-
-  protected val counter: Counter
-
-  val metric: Metric
+    "work" in {
+      counter should not be theSameInstanceAs(counter)
+    }
+  }
 }

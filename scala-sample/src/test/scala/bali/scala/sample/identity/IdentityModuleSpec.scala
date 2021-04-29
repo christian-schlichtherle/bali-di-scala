@@ -1,8 +1,8 @@
-package bali.scala.sample
+package bali.scala.sample.identity
 
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers._
 import bali.scala.make
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 
 class IdentityModuleSpec extends AnyWordSpec {
 

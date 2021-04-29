@@ -13,24 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package bali.scala.sample
+package bali.scala.sample.simplegreeting
 
 import bali.scala.make
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 
-import java.util.Date
+class SimpleGreetingModuleSpec extends AnyWordSpec {
 
-class ClockModuleSpec extends AnyWordSpec {
-
-  "A ClockModule" should {
-    val module = make[ClockModule]
+  "A SimpleGreetingModule" should {
+    val module = make[SimpleGreetingModule]
     import module._
 
-    "work" in {
-      clock should be theSameInstanceAs clock
-      clock.now should not be theSameInstanceAs(clock.now)
-      clock.now should be <= new Date
+    "make a greeting" in {
+      greeting should be theSameInstanceAs greeting
+      greeting.message("world") shouldBe "Hello world!"
     }
   }
 }

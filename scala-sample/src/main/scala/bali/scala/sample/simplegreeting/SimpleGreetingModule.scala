@@ -1,6 +1,7 @@
-package bali.scala.sample
+package bali.scala.sample.simplegreeting
 
 import bali.Module
+import bali.scala.sample.greeting.Greeting
 
 @Module
 trait SimpleGreetingModule {

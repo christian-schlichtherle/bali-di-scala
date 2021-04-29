@@ -13,22 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package bali.scala.sample
+package bali.scala.sample.clock
 
 import bali.Module
 
-trait Counter {
+import java.util.Date
 
-  final var count: Int = 0
+trait Clock {
 
-  final def increment: Counter = {
-    count += 1
-    this
-  }
+  def now: Date
 }
 
 @Module
-trait CounterModule {
+trait ClockModule {
 
-  def counter: Counter
+  val clock: Clock
+
+  protected def now: Date
 }

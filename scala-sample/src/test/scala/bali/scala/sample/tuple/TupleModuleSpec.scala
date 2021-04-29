@@ -1,8 +1,9 @@
-package bali.scala.sample
+package bali.scala.sample.tuple
 
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.matchers.should.Matchers._
 import bali.scala.make
+import bali.scala.sample.tuple
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 
 class TupleModuleSpec extends AnyWordSpec {
 
@@ -16,11 +17,11 @@ class TupleModuleSpec extends AnyWordSpec {
 
   "The Tuple2 companion object" should {
     "make a working Tuple2" in {
-      test(Tuple2("foo", "bar"))
+      test(tuple.Tuple2("foo", "bar"))
     }
   }
 
-  private def test(t: Tuple2[String, String]) = {
+  private def test(t: tuple.Tuple2[String, String]) = {
     t._1 shouldBe "foo"
     t._2 shouldBe "bar"
 

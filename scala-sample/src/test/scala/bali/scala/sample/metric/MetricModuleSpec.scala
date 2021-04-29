@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package bali.scala.sample
+package bali.scala.sample.metric
 
 import bali.scala.make
 import org.scalatest.matchers.should.Matchers._

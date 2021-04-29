@@ -1,4 +1,4 @@
-package bali.scala.sample
+package bali.scala.sample.tuple
 
 import bali.scala.make
 import bali.{Lookup, Module}

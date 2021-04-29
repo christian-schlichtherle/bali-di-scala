@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package bali.scala.sample
+package bali.scala.sample.weatherstation
 
-import bali.scala.sample.Temperature.Celsius
+import bali.scala.sample.clock.Clock
+import bali.scala.sample.weatherstation.Temperature.Celsius
 import bali.{Lookup, Module}
 
 import java.util.Date

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package bali.scala.sample
+package bali.scala.sample.weatherstation
 
 import bali.scala.make
-import bali.scala.sample.Temperature.Celsius
+import bali.scala.sample.weatherstation.Temperature.Celsius
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 
