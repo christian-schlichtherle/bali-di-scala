@@ -63,7 +63,7 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val lookupAnnotationMap = {
         lookupAnnotation.map(_.toMap).getOrElse(Map.empty).collect {
-          case key -> (value: String) if value.nonEmpty => key -> TermName(value)
+          case (key, value: String) if value.nonEmpty => key -> TermName(value)
         }
       }
 
@@ -81,8 +81,8 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val methodSignature = {
         val withType = if (paramLists.flatten.isEmpty) ": " else ""
-        val inherited = if (targetTypeSymbol != methodOwner) s" inherited from $methodOwner" else ""
-        s"$methodSymbol$withType$methodType$inherited in $targetTypeSymbol"
+        val inherited = if (targetTypeSymbol != methodOwner) s" in $methodOwner as seen by " else " in "
+        methodSymbol.toString + withType + methodType + inherited + targetTypeSymbol
       }
 
       lazy val methodType = methodSymbol.infoIn(targetType)
@@ -121,7 +121,7 @@ private final class Make(val c: blackbox.Context) {
 
       lazy val matchDependency = {
         matchPlan.iterator.flatMap {
-          case alias -> constraint => typecheckAndExtract(alias).filter(ref => constraint(ref.symbol))
+          case (alias, constraint) => typecheckAndExtract(alias).filter(ref => constraint(ref.symbol))
         }.nextOption()
       }
 
@@ -144,7 +144,7 @@ private final class Make(val c: blackbox.Context) {
 
       def reportWrongType = {
         matchPlan.flatMap {
-          case alias -> constraint => typecheck(q"$alias").filter(ref => constraint(ref.symbol))
+          case (alias, constraint) => typecheck(q"$alias").filter(ref => constraint(ref.symbol))
         }.map(abortWrongType).lastOption
       }
 
