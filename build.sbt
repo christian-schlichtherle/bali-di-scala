@@ -15,6 +15,7 @@
  */
 
 inThisBuild(Seq(
+  crossScalaVersions := Seq("2.12.13", "2.13.5"),
   homepage := Some(url("https://github.com/christian-schlichtherle/bali-di-scala")),
   licenses := Seq("Apache License, Version 2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
   organization := "global.namespace.bali",
@@ -41,8 +42,8 @@ inThisBuild(Seq(
       </issueManagement>
   },
   publishArtifact := false,
-  scalacOptions ++= Seq("-deprecation", "-feature", "-Ymacro-annotations"),
-  scalaVersion := "2.13.5",
+  scalacOptions ++= Seq("-deprecation", "-feature"),
+  scalaVersion := crossScalaVersions.value.last,
   scmInfo := Some(ScmInfo(
     browseUrl = url("https://github.com/christian-schlichtherle/bali-di-scala"),
     connection = "scm:git:git@github.com/christian-schlichtherle/bali-di-scala.git",
@@ -83,8 +84,24 @@ lazy val scalaSample: Project = project
     libraryDependencies ++= Seq(
       Dependency.ScalaTest % Test,
     ),
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, minor)) if minor < 13 =>
+          Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full))
+        case _ =>
+          Seq.empty
+      }
+    },
     name := "Bali DI Samples for Scala " + scalaBinaryVersion.value,
     normalizedName := "bali-scala-sample",
+    scalacOptions ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, minor)) if minor < 13 =>
+          Seq.empty
+        case _ =>
+          Seq("-Ymacro-annotations")
+      }
+    },
   )
 
 releaseCrossBuild := false

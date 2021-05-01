@@ -17,7 +17,7 @@ package bali.scala
 
 import scala.reflect.macros.blackbox
 
-private final class Make(val c: blackbox.Context) {
+private final class Make(val c: blackbox.Context) extends MakeCompat {
 
   import c.universe._
 
@@ -41,7 +41,7 @@ private final class Make(val c: blackbox.Context) {
       }
 
       def bindAs(rightHandSide: Tree) = {
-        if (methodSymbol.isVal) {
+        if (methodSymbol.isStable) {
           q"final override lazy val $methodName: $returnType = $rightHandSide"
         } else {
           q"final override def $methodName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rightHandSide"
@@ -138,7 +138,7 @@ private final class Make(val c: blackbox.Context) {
                 .reduceOption((t1, t2) => (s: Symbol) => t1(s) || t2(s))
                 .map(t => (s: Symbol) => !t(s))
                 .getOrElse((_: Symbol) => true)
-          ),
+          )
         ).flatten
       }
 
