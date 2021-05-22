@@ -153,6 +153,7 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
       lazy val valueAlias = lookupAnnotationMap.get("value")
 
       lazy val valueAliasOrMethodName = valueAlias.getOrElse(methodName)
+
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
         .orElse(matchDependency.map(bindDependency))
