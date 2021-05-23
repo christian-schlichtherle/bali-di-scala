@@ -89,8 +89,13 @@ lazy val scala: Project = project
     libraryDependencies ++= Seq(
       Dependency.ScalaTest % Test,
       "global.namespace.bali" % "bali-annotation" % "0.11.2",
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
     ),
+    libraryDependencies ++= {
+      CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, _)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+        case _ => Seq.empty
+      }
+    },
     name := "Bali DI for Scala " + scalaBinaryVersion.value,
     normalizedName := "bali-scala",
     publishArtifact := true,
