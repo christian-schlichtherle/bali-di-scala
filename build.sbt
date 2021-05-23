@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import ReleaseTransformations._
+
 inThisBuild(Seq(
   crossScalaVersions := Seq("2.12.13", "2.13.6"),
   homepage := Some(url("https://github.com/christian-schlichtherle/bali-di-scala")),
@@ -61,6 +63,23 @@ lazy val root: Project = project
   .in(file("."))
   .aggregate(scala, scalaSample)
   .settings(
+    crossScalaVersions := Nil,
+    releaseCrossBuild := false,
+    releaseProcess := Seq[ReleaseStep](
+      checkSnapshotDependencies,
+      inquireVersions,
+      runClean,
+      releaseStepCommandAndRemaining("+test"),
+      setReleaseVersion,
+      commitReleaseVersion,
+      tagRelease,
+      releaseStepCommandAndRemaining("+publishSigned"),
+      releaseStepCommand("sonatypeBundleRelease"),
+      setNextVersion,
+      commitNextVersion,
+      pushChanges,
+    ),
+    sonatypeProfileName := "global.namespace",
     name := "Bali DI Root for Scala " + scalaBinaryVersion.value,
     normalizedName := "bali-scala-root",
   )
@@ -103,24 +122,3 @@ lazy val scalaSample: Project = project
       }
     },
   )
-
-releaseCrossBuild := false
-
-import ReleaseTransformations._
-
-releaseProcess := Seq[ReleaseStep](
-  checkSnapshotDependencies,
-  inquireVersions,
-  runClean,
-  releaseStepCommandAndRemaining("+test"),
-  setReleaseVersion,
-  commitReleaseVersion,
-  tagRelease,
-  releaseStepCommandAndRemaining("+publishSigned"),
-  releaseStepCommand("sonatypeBundleRelease"),
-  setNextVersion,
-  commitNextVersion,
-  pushChanges,
-)
-
-sonatypeProfileName := "global.namespace"
