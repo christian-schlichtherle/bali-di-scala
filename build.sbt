@@ -89,8 +89,7 @@ lazy val scala: Project = project
     libraryDependencies ++= Seq(
       Dependency.ScalaTest % Test,
       "global.namespace.bali" % "bali-annotation" % "0.11.2",
-    ),
-    libraryDependencies ++= {
+    ) ++ {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, _)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
         case _ => Seq.empty
@@ -108,22 +107,6 @@ lazy val scalaSample: Project = project
     libraryDependencies ++= Seq(
       Dependency.ScalaTest % Test,
     ),
-    libraryDependencies ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, minor)) if minor < 13 =>
-          Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full))
-        case _ =>
-          Seq.empty
-      }
-    },
     name := "Bali DI Samples for Scala " + scalaBinaryVersion.value,
     normalizedName := "bali-scala-sample",
-    scalacOptions ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, minor)) if minor < 13 =>
-          Seq.empty
-        case _ =>
-          Seq("-Ymacro-annotations")
-      }
-    },
   )
