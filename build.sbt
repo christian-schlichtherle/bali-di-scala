@@ -17,7 +17,7 @@
 import ReleaseTransformations._
 
 inThisBuild(Seq(
-  crossScalaVersions := Seq("2.12.13", "2.13.6"),
+  crossScalaVersions := Seq("2.12.14", "2.13.6"),
   homepage := Some(url("https://github.com/christian-schlichtherle/bali-di-scala")),
   licenses := Seq("Apache License, Version 2.0" -> url("https://www.apache.org/licenses/LICENSE-2.0")),
   organization := "global.namespace.bali",
