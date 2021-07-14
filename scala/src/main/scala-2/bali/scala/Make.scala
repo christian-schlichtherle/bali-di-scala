@@ -27,24 +27,20 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
 
   def apply[A >: Null <: AnyRef : c.WeakTypeTag]: Tree = {
 
-    lazy val body = {
-      targetType.members.collect { case member: MethodSymbol => member }.filter(_.isAbstract).map(implement)
-    }
+    lazy val body = targetType.members.collect { case member: TermSymbol if member.isAbstract =>
 
-    def implement(methodSymbol: MethodSymbol) = {
-
-      lazy val abortNotFound = abort(s"No dependency found to bind $methodSignature.")
+      lazy val abortNotFound = abort(s"No dependency found to bind $memberSignature.")
 
       def abortWrongType(ref: Tree) = {
         val withType = if (ref.tpe.paramLists.flatten.isEmpty) ": " else ""
-        abort(s"${ref.symbol}$withType${ref.tpe} in ${ref.symbol.owner} is not applicable to bind $methodSignature.")
+        abort(s"${ref.symbol}$withType${ref.tpe} in ${ref.symbol.owner} is not applicable to bind $memberSignature.")
       }
 
       def bindAs(rightHandSide: Tree) = {
-        if (methodSymbol.isStable) {
-          q"final override lazy val $methodName: $returnType = $rightHandSide"
+        if (member.isStable) {
+          q"final override lazy val $memberName: $returnType = $rightHandSide"
         } else {
-          q"final override def $methodName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rightHandSide"
+          q"final override def $memberName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rightHandSide"
         }
       }
 
@@ -59,7 +55,7 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
         case _ => false
       }
 
-      lazy val lookupAnnotation = methodSymbol.annotation(LookupAnnotationName)
+      lazy val lookupAnnotation = member.annotation(LookupAnnotationName)
 
       lazy val lookupAnnotationMap = {
         lookupAnnotation.map(_.toMap).getOrElse(Map.empty).collect {
@@ -69,23 +65,23 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
 
       lazy val makeDependency = bindAs(q"_root_.bali.scala.make[$returnType]")
 
+      lazy val memberName: TermName = member.name
+
+      lazy val memberOwner = member.owner
+
+      lazy val memberSignature = {
+        val withType = if (paramLists.flatten.isEmpty) ": " else ""
+        val inherited = if (targetTypeSymbol != memberOwner) s" in $memberOwner as seen by " else " in "
+        member.toString + withType + memberType + inherited + targetTypeSymbol
+      }
+
+      lazy val memberType = member.infoIn(targetType)
+
       lazy val methodAlias = lookupAnnotationMap.get("method")
 
       lazy val methodAliasAndConstraint = methodAlias.map(_ -> methodConstraint)
 
       lazy val methodConstraint: SymbolTest = _.isMethod
-
-      lazy val methodName: TermName = methodSymbol.name
-
-      lazy val methodOwner = methodSymbol.owner
-
-      lazy val methodSignature = {
-        val withType = if (paramLists.flatten.isEmpty) ": " else ""
-        val inherited = if (targetTypeSymbol != methodOwner) s" in $methodOwner as seen by " else " in "
-        methodSymbol.toString + withType + methodType + inherited + targetTypeSymbol
-      }
-
-      lazy val methodType = methodSymbol.infoIn(targetType)
 
       lazy val paramAlias = lookupAnnotationMap.get("param")
 
@@ -93,30 +89,29 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
 
       lazy val paramConstraint: SymbolTest = _.isParameter
 
-      lazy val paramLists = methodType.paramLists
+      lazy val paramLists = memberType.paramLists
 
       lazy val paramLists4Lhs = paramLists.map(_.map(s => q"${s.name.toTermName}: ${s.info}"))
 
       lazy val paramLists4Rhs = paramLists.map(_.map(_.name.toTermName))
 
-      lazy val returnType = methodType.finalResultType
+      lazy val returnType = memberType.finalResultType
 
       def rightHandSide(ref: Tree) = {
         paramLists4Rhs match {
-          case List(List()) if methodSymbol.isJava => q"$ref"
+          case List(List()) if member.isJava => q"$ref"
           case _ => q"$ref(...$paramLists4Rhs)"
         }
       }
 
       def typecheckAndExtract(ref: TermName) = {
-        val freshName = c.freshName(methodName)
+        val freshName = c.freshName(memberName)
         val rhs = rightHandSide(q"$ref")
-        typecheck {
-          q"def $freshName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rhs"
-        }.flatMap {
-          case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => Some(ref)
-          case _ => None
-        }
+        typecheck(q"def $freshName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rhs")
+          .flatMap {
+            case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => Some(ref)
+            case _ => None
+          }
       }
 
       lazy val matchDependency = {
@@ -148,11 +143,11 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
         }.map(abortWrongType).lastOption
       }
 
-      lazy val typeParams4Lhs = methodType.typeParams.map(internal.typeDef)
+      lazy val typeParams4Lhs = memberType.typeParams.map(internal.typeDef)
 
       lazy val valueAlias = lookupAnnotationMap.get("value")
 
-      lazy val valueAliasOrMethodName = valueAlias.getOrElse(methodName)
+      lazy val valueAliasOrMethodName = valueAlias.getOrElse(memberName)
 
       Option
         .when(isModule && lookupAnnotation.isEmpty)(makeDependency)
