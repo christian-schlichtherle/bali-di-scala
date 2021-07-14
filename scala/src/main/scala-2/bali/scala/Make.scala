@@ -27,7 +27,7 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
 
   def apply[A >: Null <: AnyRef : c.WeakTypeTag]: Tree = {
 
-    lazy val body = targetType.members.collect { case member: TermSymbol if member.isAbstract =>
+    lazy val body = targetType.members.collect { case m: TermSymbol if m.isAbstract =>
 
       lazy val abortNotFound = abort(s"No dependency found to bind $memberSignature.")
 
@@ -64,6 +64,9 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
       }
 
       lazy val makeDependency = bindAs(q"_root_.bali.scala.make[$returnType]")
+
+      // If omitted, member annotations may get skipped, e.g. @Lookup, resulting in code generation errors:
+      lazy val member = internal.initialize(m)
 
       lazy val memberName: TermName = member.name
 
