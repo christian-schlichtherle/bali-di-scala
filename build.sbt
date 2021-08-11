@@ -88,7 +88,7 @@ lazy val scala: Project = project
   .settings(
     libraryDependencies ++= Seq(
       Dependency.ScalaTest % Test,
-      "global.namespace.bali" % "bali-annotation" % "0.11.2",
+      "global.namespace.bali" % "bali-annotation" % "0.11.3",
     ) ++ {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, _)) => Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)

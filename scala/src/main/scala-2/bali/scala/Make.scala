@@ -36,15 +36,20 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
         abort(s"${ref.symbol}$withType${ref.tpe} in ${ref.symbol.owner} is not applicable to bind $memberSignature.")
       }
 
-      def bindAs(rightHandSide: Tree) = {
+      def bindAs(rhs: Tree) = {
         if (member.isStable) {
-          q"final override lazy val $memberName: $returnType = $rightHandSide"
+          q"final override lazy val $memberName: $returnType = $rhs"
         } else {
-          q"final override def $memberName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rightHandSide"
+          q"final override def $memberName[..$typeParams4Lhs](...$explParamLists4Lhs)(implicit ..$implParams4Lhs): $returnType = $rhs"
         }
       }
 
       def bindDependency(ref: Tree) = bindAs(rightHandSide(ref))
+
+      lazy val (explParamLists4Lhs, implParams4Lhs) = {
+        val (i, e) = paramLists.partition(_.exists(_.isImplicit))
+        paramLists4Lhs(e) -> paramLists4Lhs(i).flatten
+      }
 
       lazy val fieldAlias = lookupAnnotationMap.get("field")
 
@@ -65,7 +70,7 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
 
       lazy val makeDependency = bindAs(q"_root_.bali.scala.make[$returnType]")
 
-      // If omitted, member annotations may get skipped, e.g. @Lookup, resulting in code generation errors:
+      // If skipped, member annotations may be missing, e.g. @Lookup, resulting in code generation errors:
       lazy val member = internal.initialize(m)
 
       lazy val memberName: TermName = member.name
@@ -94,7 +99,7 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
 
       lazy val paramLists = memberType.paramLists
 
-      lazy val paramLists4Lhs = paramLists.map(_.map(s => q"${s.name.toTermName}: ${s.info}"))
+      def paramLists4Lhs(l: List[List[Symbol]]) = l.map(_.map(s => q"${s.name.toTermName}: ${s.info}"))
 
       lazy val paramLists4Rhs = paramLists.map(_.map(_.name.toTermName))
 
@@ -110,7 +115,7 @@ private final class Make(val c: blackbox.Context) extends MakeCompat {
       def typecheckAndExtract(ref: TermName) = {
         val freshName = c.freshName(memberName)
         val rhs = rightHandSide(q"$ref")
-        typecheck(q"def $freshName[..$typeParams4Lhs](...$paramLists4Lhs): $returnType = $rhs")
+        typecheck(q"def $freshName[..$typeParams4Lhs](...$explParamLists4Lhs)(implicit ..$implParams4Lhs): $returnType = $rhs")
           .flatMap {
             case q"def $_[..$_](...$_): $_ = ${ref: Tree}[..$_](...$_)" => Some(ref)
             case _ => None

@@ -10,9 +10,13 @@ class ParamModuleSpec extends AnyWordSpec {
     val param = make[ParamModule].param
     import param._
 
-    "work" in {
+    "support binding methods with parameters" in {
       appendZero("A") shouldBe "A0"
-//      prependQuestionMark(1) shouldBe "?1"
+    }
+
+    "support binding methods with multiple parameter lists, including an implicit parameter list" in {
+      implicit val txt: Extension = Extension("TXT")
+      pathName(".")("README") shouldBe "./README.TXT"
     }
   }
 }
